@@ -6,6 +6,7 @@ import { useTheme } from 'next-themes';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import darkTheme from './CodeBlockDarkTheme';
 import lightTheme from './CodeBlockLightTheme';
+import MermaidBlock from '../MermaidBlock';
 
 const CodeBlock = ({
   language,
@@ -27,6 +28,10 @@ const CodeBlock = ({
     if (!mounted) return lightTheme;
     return resolvedTheme === 'dark' ? darkTheme : lightTheme;
   }, [mounted, resolvedTheme]);
+
+  if (language === 'mermaid') {
+    return <MermaidBlock>{children as string}</MermaidBlock>;
+  }
 
   return (
     <div className="relative">
