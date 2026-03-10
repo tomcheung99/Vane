@@ -10,7 +10,18 @@ const nextConfig = {
       },
     ],
   },
-  serverExternalPackages: ['pdf-parse'],
+  serverExternalPackages: [
+    'pdf-parse',
+    'better-sqlite3',
+    '@huggingface/transformers',
+    'onnxruntime-node',
+  ],
+  outputFileTracingExcludes: {
+    '*': [
+      './node_modules/onnxruntime-node/**',
+      './node_modules/@img/**',
+    ],
+  },
   outputFileTracingIncludes: {
     '/api/**': [
       './node_modules/@napi-rs/canvas/**',
