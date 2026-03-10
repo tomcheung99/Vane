@@ -58,9 +58,18 @@ const socialSearchAction: ResearchAction<typeof schema> = {
     let results: Chunk[] = [];
 
     const search = async (q: string) => {
-      const res = await searchSearxng(q, {
-        engines: ['reddit'],
-      });
+      let res;
+
+      try {
+        res = await searchSearxng(q, {
+          engines: ['reddit'],
+        });
+      } catch (error) {
+        console.warn(
+          `Social search failed for query \"${q}\": ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+        return;
+      }
 
       const resultChunks: Chunk[] = res.results.map((r) => ({
         content: r.content || r.title,

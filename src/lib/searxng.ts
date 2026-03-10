@@ -24,6 +24,10 @@ export const searchSearxng = async (
 ) => {
   const searxngURL = getSearxngURL();
 
+  if (!searxngURL) {
+    throw new Error('SearXNG URL is not configured');
+  }
+
   const url = new URL(`${searxngURL}/search?format=json`);
   url.searchParams.append('q', query);
 
@@ -38,11 +42,36 @@ export const searchSearxng = async (
     });
   }
 
-  const res = await fetch(url);
-  const data = await res.json();
+  const res = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+  const contentType = res.headers.get('content-type') ?? '';
+  const body = await res.text();
 
-  const results: SearxngSearchResult[] = data.results;
-  const suggestions: string[] = data.suggestions;
+  if (!res.ok) {
+    throw new Error(
+      `SearXNG request failed with status ${res.status}: ${body.slice(0, 200)}`,
+    );
+  }
+
+  if (!contentType.toLowerCase().includes('application/json')) {
+    throw new Error(
+      `SearXNG returned unexpected content type \"${contentType || 'unknown'}\": ${body.slice(0, 200)}`,
+    );
+  }
+
+  let data: { results?: SearxngSearchResult[]; suggestions?: string[] };
+
+  try {
+    data = JSON.parse(body);
+  } catch {
+    throw new Error(`SearXNG returned invalid JSON: ${body.slice(0, 200)}`);
+  }
+
+  const results = Array.isArray(data.results) ? data.results : [];
+  const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
 
   return { results, suggestions };
 };

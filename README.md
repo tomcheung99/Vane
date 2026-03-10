@@ -101,6 +101,7 @@ docker run -d -p 3000:3000 -e SEARXNG_API_URL=http://your-searxng-url:8080 -v va
 **Important**: Make sure your SearxNG instance has:
 
 - JSON format enabled in the settings
+- API bot detection configured to allow direct access to the search endpoint. If you use Vane's bundled config, keep searxng/limiter.toml with link_token = false.
 - Wolfram Alpha search engine enabled
 
 Replace `http://your-searxng-url:8080` with your actual SearxNG URL. Then configure your AI provider settings in the setup screen at http://localhost:3000.
@@ -132,32 +133,33 @@ If you prefer to build from source or need more control:
 ### Non-Docker Installation
 
 1. Install SearXNG and allow `JSON` format in the SearXNG settings. Make sure Wolfram Alpha search engine is also enabled.
-2. Clone the repository:
+2. If your SearXNG homepage loads but Vane gets `403 Forbidden` from `/search`, disable the `link_token` limiter for programmatic access.
+3. Clone the repository:
 
    ```bash
    git clone https://github.com/ItzCrazyKns/Vane.git
    cd Vane
    ```
 
-3. Install dependencies:
+4. Install dependencies:
 
    ```bash
    npm i
    ```
 
-4. Build the application:
+5. Build the application:
 
    ```bash
    npm run build
    ```
 
-5. Start the application:
+6. Start the application:
 
    ```bash
    npm run start
    ```
 
-6. Open your browser and navigate to http://localhost:3000 to complete the setup and configure your settings (API keys, models, SearxNG URL, etc.) in the setup screen.
+7. Open your browser and navigate to http://localhost:3000 to complete the setup and configure your settings (API keys, models, SearxNG URL, etc.) in the setup screen.
 
 **Note**: Using Docker is recommended as it simplifies the setup process, especially for managing environment variables and dependencies.
 

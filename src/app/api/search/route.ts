@@ -16,6 +16,9 @@ interface ChatRequestBody {
   systemInstructions?: string;
 }
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'Search error';
+
 export const POST = async (req: Request) => {
   try {
     const body: ChatRequestBody = await req.json();
@@ -51,7 +54,7 @@ export const POST = async (req: Request) => {
 
     const agent = new APISearchAgent();
 
-    agent.searchAsync(session, {
+    void agent.searchAsync(session, {
       chatHistory: history,
       config: {
         embedding: embeddings,
@@ -64,6 +67,11 @@ export const POST = async (req: Request) => {
       followUp: body.query,
       chatId: crypto.randomUUID(),
       messageId: crypto.randomUUID(),
+    }).catch((error) => {
+      console.error('Search agent failed:', error);
+      session.emit('error', {
+        data: getErrorMessage(error),
+      });
     });
 
     if (!body.stream) {

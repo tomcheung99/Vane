@@ -26,13 +26,15 @@ const websitesForTopic = {
 type Topic = keyof typeof websitesForTopic;
 
 export const GET = async (req: Request) => {
+  const params = new URL(req.url).searchParams;
+  const mode: 'normal' | 'preview' =
+    (params.get('mode') as 'normal' | 'preview') || 'normal';
+  const requestedTopic = params.get('topic') as Topic | null;
+  const topic: Topic = requestedTopic && requestedTopic in websitesForTopic
+    ? requestedTopic
+    : 'tech';
+
   try {
-    const params = new URL(req.url).searchParams;
-
-    const mode: 'normal' | 'preview' =
-      (params.get('mode') as 'normal' | 'preview') || 'normal';
-    const topic: Topic = (params.get('topic') as Topic) || 'tech';
-
     const selectedTopic = websitesForTopic[topic];
 
     let data = [];
@@ -85,13 +87,25 @@ export const GET = async (req: Request) => {
       },
     );
   } catch (err) {
-    console.error(`An error occurred in discover route: ${err}`);
+    console.error('An error occurred in discover route:', err);
+
+    if (mode === 'preview') {
+      return Response.json(
+        {
+          blogs: [],
+        },
+        {
+          status: 200,
+        },
+      );
+    }
+
     return Response.json(
       {
-        message: 'An error has occurred',
+        message: 'Failed to load discover content',
       },
       {
-        status: 500,
+        status: 502,
       },
     );
   }

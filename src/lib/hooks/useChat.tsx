@@ -72,6 +72,11 @@ interface ChatModelProvider {
   providerId: string;
 }
 
+const deprecatedChatModelMappings: Record<string, string> = {
+  'google/gemini-2.5-flash-preview':
+    'google/gemini-3.1-flash-lite-preview',
+};
+
 interface EmbeddingModelProvider {
   key: string;
   providerId: string;
@@ -124,8 +129,11 @@ const checkConfig = async (
 
     chatModelProviderId = chatModelProvider.id;
 
+    const migratedChatModelKey =
+      deprecatedChatModelMappings[chatModelKey ?? ''] ?? chatModelKey;
+
     const chatModel =
-      chatModelProvider.chatModels.find((m) => m.key === chatModelKey) ??
+      chatModelProvider.chatModels.find((m) => m.key === migratedChatModelKey) ??
       chatModelProvider.chatModels[0];
     chatModelKey = chatModel.key;
 

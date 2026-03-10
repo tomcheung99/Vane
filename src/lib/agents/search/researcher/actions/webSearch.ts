@@ -113,7 +113,16 @@ const webSearchAction: ResearchAction<typeof actionSchema> = {
     let results: Chunk[] = [];
 
     const search = async (q: string) => {
-      const res = await searchSearxng(q);
+      let res;
+
+      try {
+        res = await searchSearxng(q);
+      } catch (error) {
+        console.warn(
+          `Web search failed for query \"${q}\": ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+        return;
+      }
 
       const resultChunks: Chunk[] = res.results.map((r) => ({
         content: r.content || r.title,

@@ -45,6 +45,15 @@ const searchVideos = async (
 
   const searchRes = await searchSearxng(res.query, {
     engines: ['youtube'],
+  }).catch((error) => {
+    console.warn(
+      `Video search failed for query \"${res.query}\": ${error instanceof Error ? error.message : 'Unknown error'}`,
+    );
+
+    return {
+      results: [],
+      suggestions: [],
+    };
   });
 
   const videos: VideoSearchResult[] = [];

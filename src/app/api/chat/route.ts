@@ -210,7 +210,7 @@ export const POST = async (req: Request) => {
       }
     });
 
-    agent.searchAsync(session, {
+    void agent.searchAsync(session, {
       chatHistory: history,
       followUp: message.content,
       chatId: body.message.chatId,
@@ -223,6 +223,11 @@ export const POST = async (req: Request) => {
         fileIds: body.files,
         systemInstructions: body.systemInstructions || 'None',
       },
+    }).catch((error) => {
+      console.error('Chat agent failed:', error);
+      session.emit('error', {
+        data: error instanceof Error ? error.message : 'Chat error',
+      });
     });
 
     ensureChatExists({

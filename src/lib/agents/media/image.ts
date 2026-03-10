@@ -46,6 +46,15 @@ const searchImages = async (
 
   const searchRes = await searchSearxng(res.query, {
     engines: ['bing images', 'google images'],
+  }).catch((error) => {
+    console.warn(
+      `Image search failed for query \"${res.query}\": ${error instanceof Error ? error.message : 'Unknown error'}`,
+    );
+
+    return {
+      results: [],
+      suggestions: [],
+    };
   });
 
   const images: ImageSearchResult[] = [];
