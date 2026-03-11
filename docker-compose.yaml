@@ -1,12 +1,24 @@
 services:
-  vane:
-    image: itzcrazykns1337/vane:latest
+  nextjs:
     build:
       context: .
+      dockerfile: Dockerfile.nextjs
     ports:
       - '3000:3000'
     volumes:
       - data:/home/vane/data
+    environment:
+      - SEARXNG_API_URL=http://searxng:8080
+    depends_on:
+      - searxng
+    restart: unless-stopped
+
+  searxng:
+    build:
+      context: .
+      dockerfile: Dockerfile.searxng
+    ports:
+      - '8080:8080'
     restart: unless-stopped
 
 volumes:
