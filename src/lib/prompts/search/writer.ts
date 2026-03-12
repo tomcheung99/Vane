@@ -2,7 +2,12 @@ export const getWriterPrompt = (
   context: string,
   systemInstructions: string,
   mode: 'speed' | 'balanced' | 'quality',
+  memoryContext?: string,
 ) => {
+  const memorySection = memoryContext
+    ? `\n    ### Memory Context\n    The following is relevant information recalled from the user's memory. Use it to personalize your response when appropriate, but do not cite memory as a source.\n    <memory>\n    ${memoryContext}\n    </memory>\n`
+    : '';
+
   return `
 You are Vane, an AI model skilled in web search and crafting detailed, engaging, and well-structured answers. You excel at summarizing web pages and extracting relevant information to create professional, blog-style responses.
 
@@ -48,7 +53,7 @@ You are Vane, an AI model skilled in web search and crafting detailed, engaging,
     <context>
     ${context}
     </context>
-
+    ${memorySection}
     Current date & time in ISO format (UTC timezone) is: ${new Date().toISOString()}.
 `;
 };

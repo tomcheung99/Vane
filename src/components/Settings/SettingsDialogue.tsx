@@ -7,6 +7,7 @@ import {
   Search,
   Sliders,
   ToggleRight,
+  Unplug,
 } from 'lucide-react';
 import Preferences from './Sections/Preferences';
 import { motion } from 'framer-motion';
@@ -18,6 +19,7 @@ import Models from './Sections/Models/Section';
 import SearchSection from './Sections/Search';
 import Select from '@/components/ui/Select';
 import Personalization from './Sections/Personalization';
+import McpSection from './Sections/McpServers';
 
 const sections = [
   {
@@ -51,6 +53,14 @@ const sections = [
     icon: Search,
     component: SearchSection,
     dataAdd: 'search',
+  },
+  {
+    key: 'mcpServers',
+    name: 'MCP Servers',
+    description: 'Connect external MCP tool servers.',
+    icon: Unplug,
+    component: McpSection,
+    dataAdd: 'mcpServers',
   },
 ];
 

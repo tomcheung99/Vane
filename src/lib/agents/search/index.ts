@@ -8,6 +8,7 @@ import db from '@/lib/db';
 import { chats, messages } from '@/lib/db/schema';
 import { and, eq, gt } from 'drizzle-orm';
 import { TextBlock } from '@/lib/types';
+import { searchMemories } from '@/lib/mcp';
 
 class SearchAgent {
   async searchAsync(session: SessionManager, input: SearchAgentInput) {
@@ -114,10 +115,16 @@ class SearchAgent {
 
     const finalContextWithWidgets = `<search_results note="These are the search results and assistant can cite these">\n${finalContext}\n</search_results>\n<widgets_result noteForAssistant="Its output is already showed to the user, assistant can use this information to answer the query but do not CITE this as a souce">\n${widgetContext}\n</widgets_result>`;
 
+    let memoryContext: string | null = null;
+    try {
+      memoryContext = await searchMemories(input.followUp);
+    } catch { /* non-critical */ }
+
     const writerPrompt = getWriterPrompt(
       finalContextWithWidgets,
       input.config.systemInstructions,
       input.config.mode,
+      memoryContext ?? undefined,
     );
     const answerStream = input.config.llm.streamText({
       messages: [

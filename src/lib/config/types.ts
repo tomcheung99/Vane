@@ -60,6 +60,13 @@ type ConfigModelProvider = {
   hash: string;
 };
 
+type McpServerEntry = {
+  type: 'sse';
+  url: string;
+  headers?: Record<string, string>;
+  toolTimeout?: number;
+};
+
 type Config = {
   version: number;
   setupComplete: boolean;
@@ -72,6 +79,9 @@ type Config = {
   modelProviders: ConfigModelProvider[];
   search: {
     [key: string]: any;
+  };
+  mcpServers: {
+    [name: string]: McpServerEntry;
   };
 };
 
@@ -104,6 +114,7 @@ export type {
   StringUIConfigField,
   ModelProviderUISection,
   ConfigModelProvider,
+  McpServerEntry,
   TextareaUIConfigField,
   SwitchUIConfigField,
 };

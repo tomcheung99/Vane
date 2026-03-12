@@ -1,5 +1,5 @@
 import configManager from './index';
-import { ConfigModelProvider } from './types';
+import { ConfigModelProvider, McpServerEntry } from './types';
 
 export const getConfiguredModelProviders = (): ConfigModelProvider[] => {
   return configManager.getConfig('modelProviders', []);
@@ -13,3 +13,6 @@ export const getConfiguredModelProviderById = (
 
 export const getSearxngURL = () =>
   configManager.getConfig('search.searxngURL', '');
+
+export const getMcpServers = (): Record<string, McpServerEntry> =>
+  configManager.getMcpServers();

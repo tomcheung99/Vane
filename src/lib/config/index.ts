@@ -19,6 +19,7 @@ class ConfigManager {
     search: {
       searxngURL: '',
     },
+    mcpServers: {},
   };
   uiConfigSections: UIConfigSections = {
     preferences: [
@@ -168,7 +169,9 @@ class ConfigManager {
   }
 
   private migrateConfig(config: Config): Config {
-    /* TODO: Add migrations */
+    if (!config.mcpServers) {
+      config.mcpServers = {};
+    }
     return config;
   }
 
@@ -382,6 +385,25 @@ class ConfigManager {
 
   public getCurrentConfig(): Config {
     return JSON.parse(JSON.stringify(this.currentConfig));
+  }
+
+  public getMcpServers(): Config['mcpServers'] {
+    return this.currentConfig.mcpServers || {};
+  }
+
+  public setMcpServer(name: string, entry: Config['mcpServers'][string]) {
+    if (!this.currentConfig.mcpServers) {
+      this.currentConfig.mcpServers = {};
+    }
+    this.currentConfig.mcpServers[name] = entry;
+    this.saveConfig();
+  }
+
+  public removeMcpServer(name: string) {
+    if (this.currentConfig.mcpServers) {
+      delete this.currentConfig.mcpServers[name];
+      this.saveConfig();
+    }
   }
 }
 

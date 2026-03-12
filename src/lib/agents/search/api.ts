@@ -4,6 +4,7 @@ import { classify } from './classifier';
 import Researcher from './researcher';
 import { getWriterPrompt } from '@/lib/prompts/search/writer';
 import { WidgetExecutor } from './widgets';
+import { searchMemories } from '@/lib/mcp';
 
 class APISearchAgent {
   async searchAsync(session: SessionManager, input: SearchAgentInput) {
@@ -65,10 +66,16 @@ class APISearchAgent {
 
     const finalContextWithWidgets = `<search_results note="These are the search results and assistant can cite these">\n${finalContext}\n</search_results>\n<widgets_result noteForAssistant="Its output is already showed to the user, assistant can use this information to answer the query but do not CITE this as a souce">\n${widgetContext}\n</widgets_result>`;
 
+    let memoryContext: string | null = null;
+    try {
+      memoryContext = await searchMemories(input.followUp);
+    } catch { /* non-critical */ }
+
     const writerPrompt = getWriterPrompt(
       finalContextWithWidgets,
       input.config.systemInstructions,
       input.config.mode,
+      memoryContext ?? undefined,
     );
 
     const answerStream = input.config.llm.streamText({
