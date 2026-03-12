@@ -9,6 +9,7 @@ import { chats, messages } from '@/lib/db/schema';
 import { and, eq, gt } from 'drizzle-orm';
 import { TextBlock } from '@/lib/types';
 import { searchMemories } from '@/lib/mcp';
+import { extractAndSaveMemory } from '@/lib/mcp/memoryExtractor';
 
 class SearchAgent {
   async searchAsync(session: SessionManager, input: SearchAgentInput) {
@@ -187,6 +188,21 @@ class SearchAgent {
         ),
       )
       .execute();
+
+    // Fire-and-forget: extract and save memory candidates
+    const fullResponse = session
+      .getAllBlocks()
+      .filter((b): b is TextBlock => b.type === 'text')
+      .map((b) => b.data)
+      .join('\n');
+
+    void extractAndSaveMemory({
+      llm: input.config.llm,
+      userMessage: input.followUp,
+      assistantResponse: fullResponse,
+      chatHistory: input.chatHistory,
+      messageId: input.messageId,
+    }).catch(() => {});
   }
 }
 

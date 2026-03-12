@@ -5,6 +5,7 @@ import Researcher from './researcher';
 import { getWriterPrompt } from '@/lib/prompts/search/writer';
 import { WidgetExecutor } from './widgets';
 import { searchMemories } from '@/lib/mcp';
+import { extractAndSaveMemory } from '@/lib/mcp/memoryExtractor';
 
 class APISearchAgent {
   async searchAsync(session: SessionManager, input: SearchAgentInput) {
@@ -92,7 +93,10 @@ class APISearchAgent {
       ],
     });
 
+    let fullResponse = '';
+
     for await (const chunk of answerStream) {
+      fullResponse += chunk.contentChunk;
       session.emit('data', {
         type: 'response',
         data: chunk.contentChunk,
@@ -100,6 +104,15 @@ class APISearchAgent {
     }
 
     session.emit('end', {});
+
+    // Fire-and-forget: extract and save memory candidates
+    void extractAndSaveMemory({
+      llm: input.config.llm,
+      userMessage: input.followUp,
+      assistantResponse: fullResponse,
+      chatHistory: input.chatHistory,
+      messageId: input.messageId,
+    }).catch(() => {});
   }
 }
 
