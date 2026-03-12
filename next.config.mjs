@@ -3,6 +3,15 @@ import pkg from './package.json' with { type: 'json' };
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [
+        { 'better-sqlite3': 'commonjs better-sqlite3' },
+        ...(Array.isArray(config.externals) ? config.externals : []),
+      ];
+    }
+    return config;
+  },
   images: {
     remotePatterns: [
       {

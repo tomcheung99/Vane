@@ -22,6 +22,7 @@
     "@tailwindcss/typography": "^0.5.12",
     "@toolsycc/json-repair": "^0.1.22",
     "axios": "^1.8.3",
+    "better-sqlite3": "^11.7.0",
     "clsx": "^2.1.0",
     "drizzle-orm": "^0.40.1",
     "js-tiktoken": "^1.0.21",
@@ -55,9 +56,11 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
     "@types/jspdf": "^2.0.0",
     "@types/node": "^24.8.1",
     "@types/pdf-parse": "^1.1.4",
+    "@types/pg": "^8.18.0",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/react-syntax-highlighter": "^15.5.13",
