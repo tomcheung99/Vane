@@ -3,6 +3,18 @@ import { getMcpServers } from '@/lib/config/serverRegistry';
 
 let initialized = false;
 
+const MEMORY_SEARCH_TOOL_NAMES = [
+  'search_memory',
+  'search_memories',
+  'openmemory_query',
+];
+
+const MEMORY_ADD_TOOL_NAMES = [
+  'add_memory',
+  'add_memories',
+  'openmemory_store',
+];
+
 export async function ensureMcpConnected(): Promise<void> {
   if (initialized) return;
 
@@ -27,9 +39,7 @@ export async function searchMemories(query: string): Promise<string | null> {
   await ensureMcpConnected();
 
   const tools = mcpClientManager.listTools();
-  const memoryTool = tools.find(
-    (t) => t.name === 'search_memory' || t.name === 'search_memories',
-  );
+  const memoryTool = tools.find((t) => MEMORY_SEARCH_TOOL_NAMES.includes(t.name));
 
   if (!memoryTool) return null;
 
@@ -54,21 +64,33 @@ export async function searchMemories(query: string): Promise<string | null> {
 
 export async function addMemory(
   content: string,
+  options?: { tags?: string[]; metadata?: Record<string, unknown> },
 ): Promise<boolean> {
   await ensureMcpConnected();
 
   const tools = mcpClientManager.listTools();
-  const memoryTool = tools.find(
-    (t) => t.name === 'add_memory' || t.name === 'add_memories',
-  );
+  const memoryTool = tools.find((t) => MEMORY_ADD_TOOL_NAMES.includes(t.name));
 
   if (!memoryTool) return false;
 
   try {
+    let args: Record<string, unknown>;
+
+    if (memoryTool.name === 'openmemory_store') {
+      args = {
+        content,
+        type: 'contextual',
+        ...(options?.tags?.length ? { tags: options.tags } : {}),
+        ...(options?.metadata ? { metadata: options.metadata } : {}),
+      };
+    } else {
+      args = { content };
+    }
+
     await mcpClientManager.callTool(
       memoryTool.serverName,
       memoryTool.name,
-      { content },
+      args,
     );
     return true;
   } catch (err) {

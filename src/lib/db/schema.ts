@@ -1,19 +1,21 @@
 import { sql } from 'drizzle-orm';
-import { text, integer, sqliteTable } from 'drizzle-orm/sqlite-core';
+import { text, integer, pgTable, pgSchema, jsonb, serial } from 'drizzle-orm/pg-core';
 import { Block } from '../types';
 import { SearchSources } from '../agents/search/types';
 
-export const messages = sqliteTable('messages', {
-  id: integer('id').primaryKey(),
+export const vaneSchema = pgSchema('vane');
+
+export const messages = vaneSchema.table('messages', {
+  id: serial('id').primaryKey(),
   messageId: text('messageId').notNull(),
   chatId: text('chatId').notNull(),
   backendId: text('backendId').notNull(),
   query: text('query').notNull(),
   createdAt: text('createdAt').notNull(),
-  responseBlocks: text('responseBlocks', { mode: 'json' })
+  responseBlocks: jsonb('responseBlocks')
     .$type<Block[]>()
-    .default(sql`'[]'`),
-  status: text({ enum: ['answering', 'completed', 'error'] }).default(
+    .default(sql`'[]'::jsonb`),
+  status: text('status', { enum: ['answering', 'completed', 'error'] }).default(
     'answering',
   ),
 });
@@ -23,16 +25,14 @@ interface DBFile {
   fileId: string;
 }
 
-export const chats = sqliteTable('chats', {
+export const chats = vaneSchema.table('chats', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   createdAt: text('createdAt').notNull(),
-  sources: text('sources', {
-    mode: 'json',
-  })
+  sources: jsonb('sources')
     .$type<SearchSources[]>()
-    .default(sql`'[]'`),
-  files: text('files', { mode: 'json' })
+    .default(sql`'[]'::jsonb`),
+  files: jsonb('files')
     .$type<DBFile[]>()
-    .default(sql`'[]'`),
+    .default(sql`'[]'::jsonb`),
 });
