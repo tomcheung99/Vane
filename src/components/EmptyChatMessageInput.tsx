@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import Sources from './MessageInputActions/Sources';
@@ -7,12 +7,14 @@ import Attach from './MessageInputActions/Attach';
 import { useChat } from '@/lib/hooks/useChat';
 import ModelSelector from './MessageInputActions/ChatModelSelector';
 import EmbeddingModelSelector from './MessageInputActions/EmbeddingModelSelector';
+import MobileOptionsSheet from './MessageInputActions/MobileOptionsSheet';
 
 const EmptyChatMessageInput = () => {
   const { sendMessage } = useChat();
 
   /* const [copilotEnabled, setCopilotEnabled] = useState(false); */
   const [message, setMessage] = useState('');
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -68,7 +70,16 @@ const EmptyChatMessageInput = () => {
         <div className="flex flex-row items-center justify-between mt-4">
           <Optimization />
           <div className="flex flex-row items-center space-x-2">
-            <div className="flex flex-row items-center space-x-1">
+            {/* Mobile: single options button */}
+            <button
+              type="button"
+              onClick={() => setMobileSheetOpen(true)}
+              className="sm:hidden flex items-center justify-center p-2 rounded-lg text-black/50 dark:text-white/50 hover:bg-light-200 dark:hover:bg-dark-200 active:scale-95 transition duration-200"
+            >
+              <Plus size={18} />
+            </button>
+            {/* Desktop: inline action buttons */}
+            <div className="hidden sm:flex flex-row items-center space-x-1">
               <Sources />
               <ModelSelector />
               <EmbeddingModelSelector />
@@ -82,6 +93,10 @@ const EmptyChatMessageInput = () => {
             </button>
           </div>
         </div>
+        <MobileOptionsSheet
+          isOpen={mobileSheetOpen}
+          onClose={() => setMobileSheetOpen(false)}
+        />
       </div>
     </form>
   );

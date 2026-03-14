@@ -5,9 +5,10 @@ import MessageInput from './MessageInput';
 import MessageBox from './MessageBox';
 import MessageBoxLoading from './MessageBoxLoading';
 import { useChat } from '@/lib/hooks/useChat';
+import { Square } from 'lucide-react';
 
 const Chat = () => {
-  const { sections, loading, messageAppeared, messages } = useChat();
+  const { sections, loading, messageAppeared, messages, stopGeneration } = useChat();
 
   const [dividerWidth, setDividerWidth] = useState(0);
   const dividerRef = useRef<HTMLDivElement | null>(null);
@@ -77,7 +78,18 @@ const Chat = () => {
           </Fragment>
         );
       })}
-      {loading && !messageAppeared && <MessageBoxLoading />}
+      {loading && !messageAppeared && (
+        <div className="flex flex-col items-start gap-3">
+          <MessageBoxLoading />
+          <button
+            onClick={stopGeneration}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-light-secondary dark:bg-dark-secondary hover:bg-light-200 dark:hover:bg-dark-200 text-black dark:text-white transition duration-200"
+          >
+            <Square size={14} />
+            Stop generating
+          </button>
+        </div>
+      )}
       <div ref={messageEnd} className="h-0" />
       {dividerWidth > 0 && (
         <div

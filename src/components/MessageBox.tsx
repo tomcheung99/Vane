@@ -11,6 +11,9 @@ import {
   Layers3,
   Plus,
   CornerDownRight,
+  RotateCcw,
+  Square,
+  AlertCircle,
 } from 'lucide-react';
 import Markdown, { MarkdownToJSX, RuleType } from 'markdown-to-jsx';
 import Copy from './MessageActions/Copy';
@@ -54,6 +57,7 @@ const MessageBox = ({
     loading,
     sendMessage,
     rewrite,
+    stopGeneration,
     messages,
     researchEnded,
     chatHistory,
@@ -157,6 +161,24 @@ const MessageBox = ({
               </div>
             )}
 
+          {isLast && !loading && section.message.status === 'error' && !hasContent && (
+            <div className="flex flex-col gap-3 p-4 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
+              <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                <AlertCircle size={16} />
+                <span className="text-sm font-medium">
+                  Failed to get a response. Please try again.
+                </span>
+              </div>
+              <button
+                onClick={() => rewrite(section.message.messageId)}
+                className="flex items-center gap-1.5 self-start px-3 py-1.5 text-sm rounded-lg bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 transition duration-200"
+              >
+                <RotateCcw size={14} />
+                Retry
+              </button>
+            </div>
+          )}
+
           {section.widgets.length > 0 && <Renderer widgets={section.widgets} />}
 
           <div className="flex flex-col space-y-2">
@@ -187,7 +209,37 @@ const MessageBox = ({
                   {parsedMessage}
                 </Markdown>
 
-                {loading && isLast ? null : (
+                {isLast && loading ? (
+                  <div className="flex flex-row items-center w-full text-black dark:text-white py-4">
+                    <button
+                      onClick={() => stopGeneration()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-light-secondary dark:bg-dark-secondary hover:bg-light-200 dark:hover:bg-dark-200 transition duration-200"
+                    >
+                      <Square size={14} />
+                      Stop generating
+                    </button>
+                  </div>
+                ) : section.message.status === 'error' ? (
+                  <div className="flex flex-col gap-2 w-full py-4">
+                    <div className="flex items-center gap-2 text-red-500 dark:text-red-400 text-sm">
+                      <AlertCircle size={14} />
+                      <span>Something went wrong. Please try again.</span>
+                    </div>
+                    <div className="flex flex-row items-center justify-between w-full text-black dark:text-white">
+                      <div className="flex flex-row items-center -ml-2">
+                        <Rewrite
+                          rewrite={rewrite}
+                          messageId={section.message.messageId}
+                        />
+                      </div>
+                      <div className="flex flex-row items-center -mr-2">
+                        {parsedMessage && (
+                          <Copy initialMessage={parsedMessage} section={section} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                   <div className="flex flex-row items-center justify-between w-full text-black dark:text-white py-4">
                     <div className="flex flex-row items-center -ml-2">
                       <Rewrite

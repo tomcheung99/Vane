@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import AttachSmall from './MessageInputActions/AttachSmall';
 import ModelSelector from './MessageInputActions/ChatModelSelector';
 import EmbeddingModelSelector from './MessageInputActions/EmbeddingModelSelector';
 import Sources from './MessageInputActions/Sources';
+import MobileOptionsSheet from './MessageInputActions/MobileOptionsSheet';
 import { useChat } from '@/lib/hooks/useChat';
 
 const MessageInput = () => {
@@ -15,6 +16,7 @@ const MessageInput = () => {
   const [message, setMessage] = useState('');
   const [textareaRows, setTextareaRows] = useState(1);
   const [mode, setMode] = useState<'multi' | 'single'>('single');
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
   useEffect(() => {
     if (textareaRows >= 2 && message && mode === 'single') {
@@ -69,12 +71,23 @@ const MessageInput = () => {
       )}
     >
       {mode === 'single' && (
-        <div className="flex flex-row items-center space-x-0.5">
-          <Sources />
-          <ModelSelector />
-          <EmbeddingModelSelector />
-          <AttachSmall />
-        </div>
+        <>
+          {/* Mobile: single options button */}
+          <button
+            type="button"
+            onClick={() => setMobileSheetOpen(true)}
+            className="sm:hidden flex items-center justify-center p-2 rounded-lg text-black/50 dark:text-white/50 hover:bg-light-200 dark:hover:bg-dark-200 active:scale-95 transition duration-200"
+          >
+            <Plus size={18} />
+          </button>
+          {/* Desktop: inline action buttons */}
+          <div className="hidden sm:flex flex-row items-center space-x-0.5">
+            <Sources />
+            <ModelSelector />
+            <EmbeddingModelSelector />
+            <AttachSmall />
+          </div>
+        </>
       )}
       <TextareaAutosize
         ref={inputRef}
@@ -96,12 +109,23 @@ const MessageInput = () => {
       )}
       {mode === 'multi' && (
         <div className="flex flex-row items-center justify-between w-full pt-2">
-          <div className="flex flex-row items-center space-x-0.5">
-            <Sources />
-            <ModelSelector />
-            <EmbeddingModelSelector />
-            <AttachSmall />
-          </div>
+          <>
+            {/* Mobile: single options button */}
+            <button
+              type="button"
+              onClick={() => setMobileSheetOpen(true)}
+              className="sm:hidden flex items-center justify-center p-2 rounded-lg text-black/50 dark:text-white/50 hover:bg-light-200 dark:hover:bg-dark-200 active:scale-95 transition duration-200"
+            >
+              <Plus size={18} />
+            </button>
+            {/* Desktop: inline action buttons */}
+            <div className="hidden sm:flex flex-row items-center space-x-0.5">
+              <Sources />
+              <ModelSelector />
+              <EmbeddingModelSelector />
+              <AttachSmall />
+            </div>
+          </>
           <button
             disabled={message.trim().length === 0 || loading}
             className="bg-[#24A0ED] text-white disabled:text-black/50 dark:disabled:text-white/50 hover:bg-opacity-85 transition duration-100 disabled:bg-[#e0e0dc79] dark:disabled:bg-[#ececec21] rounded-full p-2"
@@ -110,6 +134,10 @@ const MessageInput = () => {
           </button>
         </div>
       )}
+      <MobileOptionsSheet
+        isOpen={mobileSheetOpen}
+        onClose={() => setMobileSheetOpen(false)}
+      />
     </form>
   );
 };

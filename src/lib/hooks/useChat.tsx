@@ -57,6 +57,7 @@ type ChatContext = {
     rewrite?: boolean,
   ) => Promise<void>;
   rewrite: (messageId: string) => void;
+  stopGeneration: () => void;
   setChatModelProvider: (provider: ChatModelProvider) => void;
   setEmbeddingModelProvider: (provider: EmbeddingModelProvider) => void;
 };
@@ -265,6 +266,7 @@ export const chatContext = createContext<ChatContext>({
   embeddingModelProvider: { key: '', providerId: '' },
   researchEnded: false,
   rewrite: () => {},
+  stopGeneration: () => {},
   sendMessage: async () => {},
   setFileIds: () => {},
   setFiles: () => {},
@@ -320,6 +322,22 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [isReady, setIsReady] = useState(false);
 
   const messagesRef = useRef<Message[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const stopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setLoading(false);
+    setMessages((prev) =>
+      prev.map((msg, i) =>
+        i === prev.length - 1 && msg.status === 'answering'
+          ? { ...msg, status: 'error' as const }
+          : msg,
+      ),
+    );
+  };
 
   const sections = useMemo<Section[]>(() => {
     return messages.map((msg) => {
@@ -429,20 +447,29 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
         isReconnectingRef.current = true;
 
-        const res = await fetch(`/api/reconnect/${lastMsg.backendId}`, {
-          method: 'POST',
-        });
-
-        if (!res.body) throw new Error('No response body');
-
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder('utf-8');
-
-        let partialChunk = '';
-
-        const messageHandler = getMessageHandler(lastMsg);
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000);
 
         try {
+          const res = await fetch(`/api/reconnect/${lastMsg.backendId}`, {
+            method: 'POST',
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          }
+
+          if (!res.body) throw new Error('No response body');
+
+          const reader = res.body?.getReader();
+          const decoder = new TextDecoder('utf-8');
+
+          let partialChunk = '';
+
+          const messageHandler = getMessageHandler(lastMsg);
+
           while (true) {
             const { value, done } = await reader.read();
             if (done) break;
@@ -461,8 +488,25 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
               console.warn('Incomplete JSON, waiting for next chunk...');
             }
           }
+        } catch (error: any) {
+          if (error?.name === 'AbortError') {
+            console.log('Reconnect aborted');
+          } else {
+            console.error('Reconnect failed:', error);
+          }
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.messageId === lastMsg.messageId &&
+              msg.status === 'answering'
+                ? { ...msg, status: 'error' as const }
+                : msg,
+            ),
+          );
         } finally {
+          clearTimeout(timeoutId);
+          abortControllerRef.current = null;
           isReconnectingRef.current = false;
+          setLoading(false);
         }
       }
     }
@@ -750,66 +794,96 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
     const messageIndex = messages.findIndex((m) => m.messageId === messageId);
 
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        content: message,
-        message: {
-          messageId: messageId,
-          chatId: chatId!,
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // 5-minute timeout
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
           content: message,
-        },
-        chatId: chatId!,
-        files: fileIds,
-        sources: sources,
-        optimizationMode: optimizationMode,
-        history: rewrite
-          ? chatHistory.current.slice(
-              0,
-              messageIndex === -1 ? undefined : messageIndex,
-            )
-          : chatHistory.current,
-        chatModel: {
-          key: chatModelProvider.key,
-          providerId: chatModelProvider.providerId,
-        },
-        embeddingModel: {
-          key: embeddingModelProvider.key,
-          providerId: embeddingModelProvider.providerId,
-        },
-        systemInstructions: localStorage.getItem('systemInstructions'),
-      }),
-    });
+          message: {
+            messageId: messageId,
+            chatId: chatId!,
+            content: message,
+          },
+          chatId: chatId!,
+          files: fileIds,
+          sources: sources,
+          optimizationMode: optimizationMode,
+          history: rewrite
+            ? chatHistory.current.slice(
+                0,
+                messageIndex === -1 ? undefined : messageIndex,
+              )
+            : chatHistory.current,
+          chatModel: {
+            key: chatModelProvider.key,
+            providerId: chatModelProvider.providerId,
+          },
+          embeddingModel: {
+            key: embeddingModelProvider.key,
+            providerId: embeddingModelProvider.providerId,
+          },
+          systemInstructions: localStorage.getItem('systemInstructions'),
+        }),
+      });
 
-    if (!res.body) throw new Error('No response body');
-
-    const reader = res.body?.getReader();
-    const decoder = new TextDecoder('utf-8');
-
-    let partialChunk = '';
-
-    const messageHandler = getMessageHandler(newMessage);
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      partialChunk += decoder.decode(value, { stream: true });
-
-      try {
-        const messages = partialChunk.split('\n');
-        for (const msg of messages) {
-          if (!msg.trim()) continue;
-          const json = JSON.parse(msg);
-          messageHandler(json);
-        }
-        partialChunk = '';
-      } catch (error) {
-        console.warn('Incomplete JSON, waiting for next chunk...');
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
+
+      if (!res.body) throw new Error('No response body');
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder('utf-8');
+
+      let partialChunk = '';
+
+      const messageHandler = getMessageHandler(newMessage);
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        partialChunk += decoder.decode(value, { stream: true });
+
+        try {
+          const messages = partialChunk.split('\n');
+          for (const msg of messages) {
+            if (!msg.trim()) continue;
+            const json = JSON.parse(msg);
+            messageHandler(json);
+          }
+          partialChunk = '';
+        } catch (error) {
+          console.warn('Incomplete JSON, waiting for next chunk...');
+        }
+      }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        console.log('Request aborted');
+      } else {
+        console.error('Chat request failed:', error);
+      }
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.messageId === messageId && msg.status === 'answering'
+            ? { ...msg, status: 'error' as const }
+            : msg,
+        ),
+      );
+    } finally {
+      clearTimeout(timeoutId);
+      abortControllerRef.current = null;
+      setLoading(false);
     }
   };
 
@@ -835,6 +909,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         setSources,
         setOptimizationMode,
         rewrite,
+        stopGeneration,
         sendMessage,
         setChatModelProvider,
         chatModelProvider,
