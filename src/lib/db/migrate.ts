@@ -104,6 +104,52 @@ async function migrateMcpServers() {
   }
 }
 
+async function migrateWebAuthn() {
+  const client = await pool.connect();
+  try {
+    const already = await client.query(
+      "SELECT 1 FROM vane.ran_migrations WHERE name = $1",
+      ['0005']
+    );
+
+    if (already.rowCount && already.rowCount > 0) {
+      console.log('Skipping already-applied migration: 0005_webauthn');
+      return;
+    }
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vane.webauthn_credentials (
+        id TEXT PRIMARY KEY,
+        "publicKey" TEXT NOT NULL,
+        counter INTEGER NOT NULL DEFAULT 0,
+        "deviceType" TEXT,
+        "backedUp" TEXT DEFAULT 'false',
+        transports TEXT,
+        "createdAt" TEXT NOT NULL
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vane.auth_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `);
+
+    await client.query(
+      "INSERT INTO vane.ran_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING",
+      ['0005']
+    );
+    console.log('Applied migration: 0005_webauthn');
+  } catch (err) {
+    console.error('Failed to apply migration 0005_webauthn:', err);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 await migrate();
 await migrateMcpServers();
+await migrateWebAuthn();
 await pool.end();

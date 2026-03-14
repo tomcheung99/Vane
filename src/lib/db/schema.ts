@@ -43,3 +43,18 @@ export const mcpServers = pgTable('mcp_servers', {
   toolTimeout: integer('toolTimeout').default(30),
   createdAt: text('createdAt').notNull(),
 });
+
+export const webauthnCredentials = pgTable('webauthn_credentials', {
+  id: text('id').primaryKey(),
+  publicKey: text('publicKey').notNull(),
+  counter: integer('counter').notNull().default(0),
+  deviceType: text('deviceType'),
+  backedUp: text('backedUp').default('false'),
+  transports: text('transports'),
+  createdAt: text('createdAt').notNull(),
+});
+
+export const authSettings = pgTable('auth_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});

@@ -17,5 +17,13 @@ export const register = async () => {
     } catch (error) {
       console.error('Failed to seed MCP servers to database:', error);
     }
+
+    // Ensure AUTH_SECRET is available for WebAuthn sessions
+    try {
+      const { ensureAuthSecret } = await import('./lib/auth/session');
+      await ensureAuthSecret();
+    } catch (error) {
+      console.error('Failed to initialize auth secret:', error);
+    }
   }
 };
