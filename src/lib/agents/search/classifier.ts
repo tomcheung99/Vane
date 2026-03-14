@@ -7,7 +7,7 @@ const schema = z.object({
   classification: z.object({
     skipSearch: z
       .boolean()
-      .describe('Indicates whether to skip the search step.'),
+      .describe('Whether to skip web search. Default false. Only true for greetings or pure writing tasks.'),
     personalSearch: z
       .boolean()
       .describe('Indicates whether to perform a personal search.'),
