@@ -52,7 +52,7 @@ class UploadStore {
         })
     }
 
-    async query(queries: string[], topK: number): Promise<{ results: Chunk[]; reranker: RerankExecutionMetadata }> {
+    async query(queries: string[], topK: number): Promise<{ results: Chunk[]; reranker: RerankExecutionMetadata; totalChunks: number }> {
         const queryEmbeddings = await this.embeddingModel.embedQuery(queries)
 
         const results: { chunk: Chunk; score: number; }[][] = [];
@@ -104,6 +104,7 @@ class UploadStore {
             return {
                 results: reranked,
                 reranker: metadata,
+                totalChunks: this.records.length,
             };
         } catch (err) {
             console.warn('Reranker failed, falling back to cosine similarity:', err);
@@ -117,6 +118,7 @@ class UploadStore {
                     inputCount: initialResults.length,
                     outputCount: Math.min(initialResults.length, topK),
                 },
+                totalChunks: this.records.length,
             };
         }
     }

@@ -54,7 +54,7 @@ const uploadsSearchAction: ResearchAction<typeof schema> = {
       fileIds: additionalConfig.fileIds,
     });
 
-    const { results, reranker } = await uploadStore.query(input.queries, 10);
+    const { results, reranker, totalChunks } = await uploadStore.query(input.queries, 10);
 
     const seenIds = new Map<string, number>();
 
@@ -77,6 +77,20 @@ const uploadsSearchAction: ResearchAction<typeof schema> = {
       .filter((r) => r !== undefined);
 
     if (researchBlock && researchBlock.type === 'research') {
+      researchBlock.data.subSteps.push({
+        id: crypto.randomUUID(),
+        type: 'tool_usage',
+        tool: 'chunking',
+        label: `Chunking: ${totalChunks} chunks across ${additionalConfig.fileIds.length} file(s)`,
+        description: `Sentence-boundary splitting with cl100k_base tokenizer. Max 512 tokens per chunk, 128-token overlap.`,
+        badges: [
+          `strategy: sentence-boundary`,
+          `maxTokens: 512`,
+          `overlap: 128`,
+          `chunks: ${totalChunks}`,
+        ],
+      });
+
       if (reranker.enabled) {
         researchBlock.data.subSteps.push({
           id: crypto.randomUUID(),
