@@ -149,7 +149,47 @@ async function migrateWebAuthn() {
   }
 }
 
+async function migrateModelProviders() {
+  const client = await pool.connect();
+  try {
+    const already = await client.query(
+      "SELECT 1 FROM vane.ran_migrations WHERE name = $1",
+      ['0006']
+    );
+
+    if (already.rowCount && already.rowCount > 0) {
+      console.log('Skipping already-applied migration: 0006_model_providers');
+      return;
+    }
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vane.model_providers (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        config JSONB NOT NULL,
+        "chatModels" JSONB DEFAULT '[]'::jsonb,
+        "embeddingModels" JSONB DEFAULT '[]'::jsonb,
+        hash TEXT NOT NULL,
+        "createdAt" TEXT NOT NULL
+      );
+    `);
+
+    await client.query(
+      "INSERT INTO vane.ran_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING",
+      ['0006']
+    );
+    console.log('Applied migration: 0006_model_providers');
+  } catch (err) {
+    console.error('Failed to apply migration 0006_model_providers:', err);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 await migrate();
 await migrateMcpServers();
 await migrateWebAuthn();
+await migrateModelProviders();
 await pool.end();

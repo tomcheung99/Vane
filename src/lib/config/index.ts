@@ -315,6 +315,13 @@ class ConfigManager {
     return newModelProvider;
   }
 
+  public async addModelProviderWithDb(type: string, name: string, config: any) {
+    const newModelProvider = this.addModelProvider(type, name, config);
+    const { upsertModelProvider } = await import('../db/modelProviders');
+    await upsertModelProvider(newModelProvider);
+    return newModelProvider;
+  }
+
   public removeModelProvider(id: string) {
     const index = this.currentConfig.modelProviders.findIndex(
       (p) => p.id === id,
@@ -328,6 +335,12 @@ class ConfigManager {
     this.saveConfig();
   }
 
+  public async removeModelProviderWithDb(id: string) {
+    this.removeModelProvider(id);
+    const { deleteModelProvider } = await import('../db/modelProviders');
+    await deleteModelProvider(id);
+  }
+
   public async updateModelProvider(id: string, name: string, config: any) {
     const provider = this.currentConfig.modelProviders.find((p) => {
       return p.id === id;
@@ -337,9 +350,17 @@ class ConfigManager {
 
     provider.name = name;
     provider.config = config;
+    provider.hash = hashObj(config);
 
     this.saveConfig();
 
+    return provider;
+  }
+
+  public async updateModelProviderWithDb(id: string, name: string, config: any) {
+    const provider = await this.updateModelProvider(id, name, config);
+    const { upsertModelProvider } = await import('../db/modelProviders');
+    await upsertModelProvider(provider);
     return provider;
   }
 
@@ -355,6 +376,7 @@ class ConfigManager {
     if (!provider) throw new Error('Invalid provider id');
 
     delete model.type;
+    model.isCustom = true;
 
     if (type === 'chat') {
       provider.chatModels.push(model);
@@ -365,6 +387,24 @@ class ConfigManager {
     this.saveConfig();
 
     return model;
+  }
+
+  public async addProviderModelWithDb(
+    providerId: string,
+    type: 'embedding' | 'chat',
+    model: any,
+  ) {
+    const addedModel = this.addProviderModel(providerId, type, model);
+    const provider = this.currentConfig.modelProviders.find((p) => {
+      return p.id === providerId;
+    });
+
+    if (!provider) throw new Error('Invalid provider id');
+
+    const { upsertModelProvider } = await import('../db/modelProviders');
+    await upsertModelProvider(provider);
+
+    return addedModel;
   }
 
   public removeProviderModel(
@@ -389,6 +429,22 @@ class ConfigManager {
     }
 
     this.saveConfig();
+  }
+
+  public async removeProviderModelWithDb(
+    providerId: string,
+    type: 'embedding' | 'chat',
+    modelKey: string,
+  ) {
+    this.removeProviderModel(providerId, type, modelKey);
+    const provider = this.currentConfig.modelProviders.find(
+      (p) => p.id === providerId,
+    );
+
+    if (!provider) throw new Error('Invalid provider id');
+
+    const { upsertModelProvider } = await import('../db/modelProviders');
+    await upsertModelProvider(provider);
   }
 
   public isSetupComplete() {
@@ -435,6 +491,15 @@ class ConfigManager {
     const { getAllMcpServers } = await import('../db/mcpServers');
     const servers = await getAllMcpServers();
     this.currentConfig.mcpServers = servers;
+  }
+
+  /** Load model providers from DB into in-memory config (DB is source of truth). */
+  public async loadModelProvidersFromDb(): Promise<void> {
+    const { getAllModelProviders } = await import('../db/modelProviders');
+    const providers = await getAllModelProviders();
+    if (providers.length > 0) {
+      this.currentConfig.modelProviders = providers;
+    }
   }
 
   /** Save a single MCP server to both config.json and DB. */

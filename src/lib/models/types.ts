@@ -4,6 +4,7 @@ import { Message } from '../types';
 type Model = {
   name: string;
   key: string;
+  isCustom?: boolean;
 };
 
 type ModelList = {

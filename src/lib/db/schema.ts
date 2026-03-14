@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { text, pgTable, jsonb, serial, integer } from 'drizzle-orm/pg-core';
 import { Block } from '../types';
 import { SearchSources } from '../agents/search/types';
+import type { Model } from '../models/types';
 
 export const messages = pgTable('messages', {
   id: serial('id').primaryKey(),
@@ -41,6 +42,21 @@ export const mcpServers = pgTable('mcp_servers', {
   url: text('url').notNull(),
   headers: jsonb('headers').$type<Record<string, string>>(),
   toolTimeout: integer('toolTimeout').default(30),
+  createdAt: text('createdAt').notNull(),
+});
+
+export const modelProviders = pgTable('model_providers', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  type: text('type').notNull(),
+  config: jsonb('config').$type<Record<string, unknown>>().notNull(),
+  chatModels: jsonb('chatModels')
+    .$type<Model[]>()
+    .default(sql`'[]'::jsonb`),
+  embeddingModels: jsonb('embeddingModels')
+    .$type<Model[]>()
+    .default(sql`'[]'::jsonb`),
+  hash: text('hash').notNull(),
   createdAt: text('createdAt').notNull(),
 });
 

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import AddModel from './AddModelDialog';
 import UpdateProvider from './UpdateProviderDialog';
 import DeleteProvider from './DeleteProviderDialog';
+import { getVisibleSettingsModels } from './settingsVisibleModels';
 
 const ModelProvider = ({
   modelProvider,
@@ -72,6 +73,28 @@ const ModelProvider = ({
   const hasError =
     modelProvider.chatModels.some((m) => m.key === 'error') ||
     modelProvider.embeddingModels.some((m) => m.key === 'error');
+  const visibleChatModels = getVisibleSettingsModels(modelProvider, 'chat');
+  const visibleEmbeddingModels = getVisibleSettingsModels(
+    modelProvider,
+    'embedding',
+  );
+  const hiddenChatDefaults = Math.max(
+    0,
+    modelProvider.type === 'vercelai'
+      ? 0
+      : modelProvider.chatModels.filter(
+          (model) => model.key !== 'error' && !model.isCustom,
+        ).length - visibleChatModels.filter((model) => !model.isCustom).length,
+  );
+  const hiddenEmbeddingDefaults = Math.max(
+    0,
+    modelProvider.type === 'vercelai'
+      ? 0
+      : modelProvider.embeddingModels.filter(
+          (model) => model.key !== 'error' && !model.isCustom,
+        ).length -
+        visibleEmbeddingModels.filter((model) => !model.isCustom).length,
+  );
 
   return (
     <div
@@ -131,32 +154,41 @@ const ModelProvider = ({
                   }
                 </span>
               </div>
-            ) : modelProvider.chatModels.filter((m) => m.key !== 'error')
-                .length === 0 && !hasError ? (
+            ) : visibleChatModels.length === 0 && !hasError ? (
               <div className="flex flex-col items-center justify-center py-4 px-4 rounded-lg border-2 border-dashed border-light-200 dark:border-dark-200 bg-light-secondary/20 dark:bg-dark-secondary/20">
                 <p className="text-xs text-black/50 dark:text-white/50 text-center">
                   No chat models configured
                 </p>
               </div>
-            ) : modelProvider.chatModels.filter((m) => m.key !== 'error')
-                .length > 0 ? (
-              <div className="flex flex-row flex-wrap gap-2">
-                {modelProvider.chatModels.map((model, index) => (
-                  <div
-                    key={`${modelProvider.id}-chat-${model.key}-${index}`}
-                    className="flex flex-row items-center space-x-1.5 text-xs lg:text-xs text-black/70 dark:text-white/70 rounded-lg bg-light-secondary dark:bg-dark-secondary px-3 py-1.5 border border-light-200 dark:border-dark-200"
-                  >
-                    <span>{model.name}</span>
-                    <button
-                      onClick={() => {
-                        handleModelDelete('chat', model.key);
-                      }}
-                      className="hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            ) : visibleChatModels.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-row flex-wrap gap-2">
+                  {visibleChatModels.map((model, index) => (
+                    <div
+                      key={`${modelProvider.id}-chat-${model.key}-${index}`}
+                      className="flex flex-row items-center space-x-1.5 text-xs lg:text-xs text-black/70 dark:text-white/70 rounded-lg bg-light-secondary dark:bg-dark-secondary px-3 py-1.5 border border-light-200 dark:border-dark-200"
                     >
-                      <X size={12} />
-                    </button>
+                      <span>{model.name}</span>
+                      {model.isCustom ? (
+                        <button
+                          onClick={() => {
+                            handleModelDelete('chat', model.key);
+                          }}
+                          className="hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                {hiddenChatDefaults > 0 ? (
+                  <div
+                    className="text-[11px] text-black/50 dark:text-white/50"
+                  >
+                    Showing top 5 default chat models for this provider.
                   </div>
-                ))}
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -186,32 +218,41 @@ const ModelProvider = ({
                   }
                 </span>
               </div>
-            ) : modelProvider.embeddingModels.filter((m) => m.key !== 'error')
-                .length === 0 && !hasError ? (
+            ) : visibleEmbeddingModels.length === 0 && !hasError ? (
               <div className="flex flex-col items-center justify-center py-4 px-4 rounded-lg border-2 border-dashed border-light-200 dark:border-dark-200 bg-light-secondary/20 dark:bg-dark-secondary/20">
                 <p className="text-xs text-black/50 dark:text-white/50 text-center">
                   No embedding models configured
                 </p>
               </div>
-            ) : modelProvider.embeddingModels.filter((m) => m.key !== 'error')
-                .length > 0 ? (
-              <div className="flex flex-row flex-wrap gap-2">
-                {modelProvider.embeddingModels.map((model, index) => (
-                  <div
-                    key={`${modelProvider.id}-embedding-${model.key}-${index}`}
-                    className="flex flex-row items-center space-x-1.5 text-xs lg:text-xs text-black/70 dark:text-white/70 rounded-lg bg-light-secondary dark:bg-dark-secondary px-3 py-1.5 border border-light-200 dark:border-dark-200"
-                  >
-                    <span>{model.name}</span>
-                    <button
-                      onClick={() => {
-                        handleModelDelete('embedding', model.key);
-                      }}
-                      className="hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            ) : visibleEmbeddingModels.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-row flex-wrap gap-2">
+                  {visibleEmbeddingModels.map((model, index) => (
+                    <div
+                      key={`${modelProvider.id}-embedding-${model.key}-${index}`}
+                      className="flex flex-row items-center space-x-1.5 text-xs lg:text-xs text-black/70 dark:text-white/70 rounded-lg bg-light-secondary dark:bg-dark-secondary px-3 py-1.5 border border-light-200 dark:border-dark-200"
                     >
-                      <X size={12} />
-                    </button>
+                      <span>{model.name}</span>
+                      {model.isCustom ? (
+                        <button
+                          onClick={() => {
+                            handleModelDelete('embedding', model.key);
+                          }}
+                          className="hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                {hiddenEmbeddingDefaults > 0 ? (
+                  <div
+                    className="text-[11px] text-black/50 dark:text-white/50"
+                  >
+                    Showing top 5 default embedding models for this provider.
                   </div>
-                ))}
+                ) : null}
               </div>
             ) : null}
           </div>

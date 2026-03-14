@@ -6,15 +6,13 @@ import { MinimalProvider, ModelList } from './types';
 import configManager from '../config';
 
 class ModelRegistry {
+  private initialized = false;
   activeProviders: (ConfigModelProvider & {
     provider: BaseModelProvider<any>;
   })[] = [];
 
-  constructor() {
-    this.initializeActiveProviders();
-  }
-
-  private initializeActiveProviders() {
+  private buildActiveProviders() {
+    this.activeProviders = [];
     const configuredProviders = getConfiguredModelProviders();
 
     configuredProviders.forEach((p) => {
@@ -34,7 +32,21 @@ class ModelRegistry {
     });
   }
 
+  private async ensureInitialized() {
+    if (this.initialized) return;
+
+    try {
+      await configManager.loadModelProvidersFromDb();
+    } catch (err) {
+      console.error('Failed to load model providers from DB, using config.json:', err);
+    }
+
+    this.buildActiveProviders();
+    this.initialized = true;
+  }
+
   async getActiveProviders() {
+    await this.ensureInitialized();
     const providers: MinimalProvider[] = [];
 
     await Promise.all(
@@ -72,6 +84,7 @@ class ModelRegistry {
   }
 
   async loadChatModel(providerId: string, modelName: string) {
+    await this.ensureInitialized();
     const provider = this.activeProviders.find((p) => p.id === providerId);
 
     if (!provider) throw new Error('Invalid provider id');
@@ -82,6 +95,7 @@ class ModelRegistry {
   }
 
   async loadEmbeddingModel(providerId: string, modelName: string) {
+    await this.ensureInitialized();
     const provider = this.activeProviders.find((p) => p.id === providerId);
 
     if (!provider) throw new Error('Invalid provider id');
@@ -96,10 +110,15 @@ class ModelRegistry {
     name: string,
     config: Record<string, any>,
   ): Promise<ConfigModelProvider> {
+    await this.ensureInitialized();
     const provider = providers[type];
     if (!provider) throw new Error('Invalid provider type');
 
-    const newProvider = configManager.addModelProvider(type, name, config);
+    const newProvider = await configManager.addModelProviderWithDb(
+      type,
+      name,
+      config,
+    );
 
     const instance = createProviderInstance(
       provider,
@@ -141,7 +160,8 @@ class ModelRegistry {
   }
 
   async removeProvider(providerId: string): Promise<void> {
-    configManager.removeModelProvider(providerId);
+    await this.ensureInitialized();
+    await configManager.removeModelProviderWithDb(providerId);
     this.activeProviders = this.activeProviders.filter(
       (p) => p.id !== providerId,
     );
@@ -154,7 +174,8 @@ class ModelRegistry {
     name: string,
     config: any,
   ): Promise<ConfigModelProvider> {
-    const updated = await configManager.updateModelProvider(
+    await this.ensureInitialized();
+    const updated = await configManager.updateModelProviderWithDb(
       providerId,
       name,
       config,
@@ -186,6 +207,7 @@ class ModelRegistry {
       };
     }
 
+    this.activeProviders = this.activeProviders.filter((p) => p.id !== providerId);
     this.activeProviders.push({
       ...updated,
       provider: instance,
@@ -204,7 +226,12 @@ class ModelRegistry {
     type: 'embedding' | 'chat',
     model: any,
   ): Promise<any> {
-    const addedModel = configManager.addProviderModel(providerId, type, model);
+    await this.ensureInitialized();
+    const addedModel = await configManager.addProviderModelWithDb(
+      providerId,
+      type,
+      model,
+    );
     return addedModel;
   }
 
@@ -213,7 +240,8 @@ class ModelRegistry {
     type: 'embedding' | 'chat',
     modelKey: string,
   ): Promise<void> {
-    configManager.removeProviderModel(providerId, type, modelKey);
+    await this.ensureInitialized();
+    await configManager.removeProviderModelWithDb(providerId, type, modelKey);
     return;
   }
 }

@@ -42,7 +42,7 @@ const AddModel = ({
       setProviders((prev) =>
         prev.map((provider) => {
           if (provider.id === providerId) {
-            const newModel = { name: modelName, key: modelKey };
+            const newModel = { name: modelName, key: modelKey, isCustom: true };
             return {
               ...provider,
               chatModels:

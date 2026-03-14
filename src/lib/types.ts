@@ -101,7 +101,7 @@ export type UploadSearchResultsResearchBlock = {
 export type ToolUsageResearchBlock = {
   id: string;
   type: 'tool_usage';
-  tool: 'mcp' | 'reranker' | 'chunking' | 'summary';
+  tool: 'mcp' | 'reranker' | 'chunking' | 'summary' | 'hybrid_retrieval';
   label: string;
   description?: string;
   badges?: string[];

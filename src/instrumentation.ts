@@ -18,6 +18,16 @@ export const register = async () => {
       console.error('Failed to seed MCP servers to database:', error);
     }
 
+    // Seed provider connections from config.json to DB on first run
+    try {
+      const { seedModelProvidersFromConfig } = await import(
+        './lib/db/modelProviders'
+      );
+      await seedModelProvidersFromConfig();
+    } catch (error) {
+      console.error('Failed to seed provider connections to database:', error);
+    }
+
     // Ensure AUTH_SECRET is available for WebAuthn sessions
     try {
       const { ensureAuthSecret } = await import('./lib/auth/session');

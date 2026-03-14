@@ -54,7 +54,10 @@ const uploadsSearchAction: ResearchAction<typeof schema> = {
       fileIds: additionalConfig.fileIds,
     });
 
-    const { results, reranker, totalChunks } = await uploadStore.query(input.queries, 10);
+    const { results, reranker, totalChunks, retrieval } = await uploadStore.query(
+      input.queries,
+      10,
+    );
 
     const seenIds = new Map<string, number>();
 
@@ -88,6 +91,26 @@ const uploadsSearchAction: ResearchAction<typeof schema> = {
           `maxTokens: 512`,
           `overlap: 128`,
           `chunks: ${totalChunks}`,
+        ],
+      });
+
+      researchBlock.data.subSteps.push({
+        id: crypto.randomUUID(),
+        type: 'tool_usage',
+        tool: 'hybrid_retrieval',
+        label:
+          retrieval.strategy === 'embedding-bm25-rrf'
+            ? 'Using hybrid retrieval'
+            : 'Using embedding retrieval',
+        description:
+          retrieval.strategy === 'embedding-bm25-rrf'
+            ? 'Combined embedding similarity and BM25 keyword ranking with Reciprocal Rank Fusion before reranking.'
+            : 'Used embedding retrieval with Reciprocal Rank Fusion before reranking.',
+        badges: [
+          `rrfK: ${retrieval.rrfK}`,
+          `embeddingWeight: ${retrieval.embeddingWeight}`,
+          `bm25Weight: ${retrieval.bm25Weight}`,
+          `bm25Lists: ${retrieval.bm25Lists}`,
         ],
       });
 
