@@ -25,15 +25,5 @@ export const register = async () => {
     } catch (error) {
       console.error('Failed to initialize auth secret:', error);
     }
-
-    // Check if any WebAuthn credentials exist to enable auth enforcement
-    try {
-      const { hasCredentials } = await import('./lib/auth/webauthn');
-      if (await hasCredentials()) {
-        process.env.WEBAUTHN_REGISTERED = 'true';
-      }
-    } catch (error) {
-      console.error('Failed to check WebAuthn credentials:', error);
-    }
   }
 };

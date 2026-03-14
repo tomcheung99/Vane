@@ -1,10 +1,11 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { authSettings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
-const SESSION_COOKIE = 'vane_session';
+export const SESSION_COOKIE = 'vane_session';
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days
 
 async function getSecretKey(): Promise<Uint8Array> {
@@ -39,7 +40,17 @@ export async function setSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: SESSION_MAX_AGE,
+    path: '/',
+  });
+}
+
+/** Set session cookie directly on a NextResponse (more reliable in Route Handlers) */
+export async function setSessionOnResponse(response: NextResponse): Promise<void> {
+  const token = await createSessionToken();
+  response.cookies.set(SESSION_COOKIE, token, {
+    httpOnly: true,
     sameSite: 'lax',
     maxAge: SESSION_MAX_AGE,
     path: '/',
@@ -49,6 +60,10 @@ export async function setSessionCookie(): Promise<void> {
 export async function clearSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
+}
+
+export function clearSessionOnResponse(response: NextResponse): void {
+  response.cookies.delete(SESSION_COOKIE);
 }
 
 export async function isAuthenticated(): Promise<boolean> {

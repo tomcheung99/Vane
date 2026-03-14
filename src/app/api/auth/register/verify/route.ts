@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
 import { cookies } from 'next/headers';
 import { getRpConfig, saveCredential, hasCredentials } from '@/lib/auth/webauthn';
-import { setSessionCookie, isAuthenticated } from '@/lib/auth/session';
+import { setSessionOnResponse, isAuthenticated, SESSION_COOKIE } from '@/lib/auth/session';
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,13 +56,12 @@ export async function POST(request: NextRequest) {
       transports: credential.transports,
     });
 
-    // Clear challenge cookie
-    cookieStore.delete('webauthn_challenge');
+    // Build response with session cookie set directly
+    const response = NextResponse.json({ verified: true });
+    await setSessionOnResponse(response);
+    response.cookies.delete('webauthn_challenge');
 
-    // Set session
-    await setSessionCookie();
-
-    return NextResponse.json({ verified: true });
+    return response;
   } catch (err) {
     console.error('[Auth] Register verify failed:', err);
     return NextResponse.json(
