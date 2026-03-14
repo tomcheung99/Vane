@@ -29,4 +29,18 @@ fi
 cd /home/vane
 echo "Starting Vane..."
 
+# Load AUTH_SECRET from persistent file if not already set.
+# This ensures Edge Runtime middleware can read the secret on restarts.
+if [ -z "$AUTH_SECRET" ] && [ -f "data/auth_secret" ]; then
+  AUTH_SECRET=$(cat data/auth_secret)
+  # Validate the secret is a non-empty hex string of at least 32 characters
+  if echo "$AUTH_SECRET" | grep -qE '^[0-9a-fA-F]{32,}$'; then
+    export AUTH_SECRET
+    echo "Loaded AUTH_SECRET from data/auth_secret"
+  else
+    echo "Warning: data/auth_secret has invalid format, skipping"
+    unset AUTH_SECRET
+  fi
+fi
+
 exec node server.js

@@ -58,17 +58,44 @@ export async function isAuthenticated(): Promise<boolean> {
   return verifySessionToken(token);
 }
 
+const AUTH_SECRET_FILE = 'data/auth_secret';
+
+async function writeAuthSecretToFile(secret: string): Promise<void> {
+  try {
+    const { writeFile, mkdir } = await import('node:fs/promises');
+    await mkdir('data', { recursive: true });
+    await writeFile(AUTH_SECRET_FILE, secret, { encoding: 'utf8', mode: 0o600 });
+  } catch (err) {
+    console.error('[Auth] Failed to write AUTH_SECRET to file:', err);
+  }
+}
+
 /**
  * Ensure AUTH_SECRET exists. Called from instrumentation.ts.
- * Loads from env → DB → generates new.
+ * Loads from env → file → DB → generates new.
+ * Also persists to data/auth_secret so it can be read at server startup
+ * and made available to Edge Runtime middleware.
  */
 export async function ensureAuthSecret(): Promise<void> {
   if (process.env.AUTH_SECRET) return;
+
+  // Try reading from persistent file first (fast path on restarts)
+  try {
+    const { readFile } = await import('node:fs/promises');
+    const fileSecret = (await readFile(AUTH_SECRET_FILE, 'utf8')).trim();
+    if (fileSecret) {
+      process.env.AUTH_SECRET = fileSecret;
+      return;
+    }
+  } catch {
+    // File doesn't exist yet, continue to DB
+  }
 
   try {
     const row = await db.select().from(authSettings).where(eq(authSettings.key, 'auth_secret'));
     if (row.length > 0 && row[0].value) {
       process.env.AUTH_SECRET = row[0].value;
+      await writeAuthSecretToFile(row[0].value);
       return;
     }
   } catch {
@@ -79,10 +106,12 @@ export async function ensureAuthSecret(): Promise<void> {
   const secret = randomBytes(32).toString('hex');
   process.env.AUTH_SECRET = secret;
 
+  await writeAuthSecretToFile(secret);
+
   try {
     await db.insert(authSettings).values({ key: 'auth_secret', value: secret })
       .onConflictDoUpdate({ target: authSettings.key, set: { value: secret } });
-    console.log('[Auth] Generated and saved AUTH_SECRET to database');
+    console.log('[Auth] Generated and saved AUTH_SECRET to database and file');
   } catch (err) {
     console.error('[Auth] Failed to persist AUTH_SECRET to database:', err);
   }
