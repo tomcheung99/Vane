@@ -67,5 +67,43 @@ async function migrate() {
   }
 }
 
+async function migrateMcpServers() {
+  const client = await pool.connect();
+  try {
+    const already = await client.query(
+      "SELECT 1 FROM vane.ran_migrations WHERE name = $1",
+      ['0004']
+    );
+
+    if (already.rowCount && already.rowCount > 0) {
+      console.log('Skipping already-applied migration: 0004_mcp_servers');
+      return;
+    }
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vane.mcp_servers (
+        name TEXT PRIMARY KEY,
+        type TEXT NOT NULL DEFAULT 'sse',
+        url TEXT NOT NULL,
+        headers JSONB,
+        "toolTimeout" INTEGER DEFAULT 30,
+        "createdAt" TEXT NOT NULL
+      );
+    `);
+
+    await client.query(
+      "INSERT INTO vane.ran_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING",
+      ['0004']
+    );
+    console.log('Applied migration: 0004_mcp_servers');
+  } catch (err) {
+    console.error('Failed to apply migration 0004_mcp_servers:', err);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 await migrate();
+await migrateMcpServers();
 await pool.end();

@@ -9,5 +9,13 @@ export const register = async () => {
     }
 
     await import('./lib/config/index');
+
+    // Seed MCP servers from config.json to DB on first run
+    try {
+      const { seedMcpServersFromConfig } = await import('./lib/db/mcpServers');
+      await seedMcpServersFromConfig();
+    } catch (error) {
+      console.error('Failed to seed MCP servers to database:', error);
+    }
   }
 };

@@ -10,6 +10,13 @@ type SaveConfigBody = {
 
 export const GET = async (req: NextRequest) => {
   try {
+    // Load MCP servers from DB as source of truth
+    try {
+      await configManager.loadMcpServersFromDb();
+    } catch (err) {
+      console.error('Failed to load MCP servers from DB, using config.json:', err);
+    }
+
     const values = configManager.getCurrentConfig();
     const fields = configManager.getUIConfigSections();
 
@@ -57,7 +64,15 @@ export const POST = async (req: NextRequest) => {
       );
     }
 
-    configManager.updateConfig(body.key, body.value);
+    // Persist MCP server changes to DB alongside config.json
+    if (body.key === 'mcpServers') {
+      await configManager.syncMcpServersWithDb(body.value as any);
+    } else if (body.key.startsWith('mcpServers.')) {
+      const serverName = body.key.split('.').slice(1).join('.');
+      await configManager.setMcpServerWithDb(serverName, body.value as any);
+    } else {
+      configManager.updateConfig(body.key, body.value);
+    }
 
     return Response.json(
       {

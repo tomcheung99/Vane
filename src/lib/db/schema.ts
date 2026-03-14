@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { text, pgTable, jsonb, serial } from 'drizzle-orm/pg-core';
+import { text, pgTable, jsonb, serial, integer } from 'drizzle-orm/pg-core';
 import { Block } from '../types';
 import { SearchSources } from '../agents/search/types';
 
@@ -33,4 +33,13 @@ export const chats = pgTable('chats', {
   files: jsonb('files')
     .$type<DBFile[]>()
     .default(sql`'[]'::jsonb`),
+});
+
+export const mcpServers = pgTable('mcp_servers', {
+  name: text('name').primaryKey(),
+  type: text('type').notNull().default('sse'),
+  url: text('url').notNull(),
+  headers: jsonb('headers').$type<Record<string, string>>(),
+  toolTimeout: integer('toolTimeout').default(30),
+  createdAt: text('createdAt').notNull(),
 });

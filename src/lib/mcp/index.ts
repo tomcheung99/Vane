@@ -1,5 +1,6 @@
 import mcpClientManager from './client';
 import { getMcpServers } from '@/lib/config/serverRegistry';
+import configManager from '@/lib/config';
 
 let initialized = false;
 
@@ -22,6 +23,13 @@ export type McpUsageMetadata = {
 
 export async function ensureMcpConnected(): Promise<void> {
   if (initialized) return;
+
+  // Load MCP servers from DB (source of truth), fall back to config.json
+  try {
+    await configManager.loadMcpServersFromDb();
+  } catch {
+    // DB not available yet — fall back to config.json
+  }
 
   const servers = getMcpServers();
   if (Object.keys(servers).length === 0) return;

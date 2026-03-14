@@ -429,6 +429,35 @@ class ConfigManager {
       this.saveConfig();
     }
   }
+
+  /** Load MCP servers from DB into in-memory config (DB is source of truth). */
+  public async loadMcpServersFromDb(): Promise<void> {
+    const { getAllMcpServers } = await import('../db/mcpServers');
+    const servers = await getAllMcpServers();
+    this.currentConfig.mcpServers = servers;
+  }
+
+  /** Save a single MCP server to both config.json and DB. */
+  public async setMcpServerWithDb(name: string, entry: Config['mcpServers'][string]): Promise<void> {
+    this.setMcpServer(name, entry);
+    const { upsertMcpServer } = await import('../db/mcpServers');
+    await upsertMcpServer(name, entry);
+  }
+
+  /** Remove a single MCP server from both config.json and DB. */
+  public async removeMcpServerWithDb(name: string): Promise<void> {
+    this.removeMcpServer(name);
+    const { deleteMcpServer } = await import('../db/mcpServers');
+    await deleteMcpServer(name);
+  }
+
+  /** Replace all MCP servers in both config.json and DB. */
+  public async syncMcpServersWithDb(servers: Config['mcpServers']): Promise<void> {
+    this.currentConfig.mcpServers = servers;
+    this.saveConfig();
+    const { syncAllMcpServersToDb } = await import('../db/mcpServers');
+    await syncAllMcpServersToDb(servers);
+  }
 }
 
 const configManager = new ConfigManager();
