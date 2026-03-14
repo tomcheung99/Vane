@@ -18,6 +18,12 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublicPath(pathname)) {
+    // Tell the root layout to skip the app shell for the auth page
+    if (pathname === '/auth' || pathname.startsWith('/auth/')) {
+      const response = NextResponse.next();
+      response.headers.set('x-auth-page', '1');
+      return response;
+    }
     return NextResponse.next();
   }
 

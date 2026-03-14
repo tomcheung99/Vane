@@ -10,6 +10,7 @@ import ThemeProvider from '@/components/theme/Provider';
 import configManager from '@/lib/config';
 import SetupWizard from '@/components/Setup/SetupWizard';
 import { ChatProvider } from '@/lib/hooks/useChat';
+import { headers } from 'next/headers';
 
 const montserrat = Montserrat({
   weight: ['300', '400', '500', '700'],
@@ -23,11 +24,26 @@ export const metadata: Metadata = {
   description: 'Vane is an AI powered answering engine.',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const isAuthPage = headersList.get('x-auth-page') === '1';
+
+  if (isAuthPage) {
+    return (
+      <html className="h-full" lang="en" suppressHydrationWarning>
+        <body className={cn('h-full antialiased', montserrat.className)}>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </body>
+      </html>
+    );
+  }
+
   const setupComplete = configManager.isSetupComplete();
   const configSections = configManager.getUIConfigSections();
 
