@@ -6,7 +6,7 @@ import { MinimalProvider, ModelList } from './types';
 import configManager from '../config';
 
 class ModelRegistry {
-  private initialized = false;
+  private initPromise: Promise<void> | null = null;
   activeProviders: (ConfigModelProvider & {
     provider: BaseModelProvider<any>;
   })[] = [];
@@ -32,17 +32,18 @@ class ModelRegistry {
     });
   }
 
-  private async ensureInitialized() {
-    if (this.initialized) return;
-
-    try {
-      await configManager.loadModelProvidersFromDb();
-    } catch (err) {
-      console.error('Failed to load model providers from DB, using config.json:', err);
+  private ensureInitialized() {
+    if (!this.initPromise) {
+      this.initPromise = (async () => {
+        try {
+          await configManager.loadModelProvidersFromDb();
+        } catch (err) {
+          console.error('Failed to load model providers from DB, using config.json:', err);
+        }
+        this.buildActiveProviders();
+      })();
     }
-
-    this.buildActiveProviders();
-    this.initialized = true;
+    return this.initPromise;
   }
 
   async getActiveProviders() {

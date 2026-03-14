@@ -96,6 +96,10 @@ class SearchAgent {
       searchPromise,
     ]);
 
+    session.emit('data', {
+      type: 'researchComplete',
+    });
+
     const finalContext =
       searchResults?.searchFindings
         .map(
