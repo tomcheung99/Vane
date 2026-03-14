@@ -4,6 +4,22 @@ import { Config, ConfigModelProvider, UIConfigSections } from './types';
 import { hashObj } from '../serverUtils';
 import { getModelProvidersUIConfigSection } from '../models/providers';
 
+const sanitizeProviderConfigString = (value: string): string => {
+  return value
+    .replace(/[\u2028\u2029]/g, '')
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
+    .trim();
+};
+
+const sanitizeProviderConfig = <T extends Record<string, any>>(config: T): T => {
+  return Object.fromEntries(
+    Object.entries(config).map(([key, value]) => [
+      key,
+      typeof value === 'string' ? sanitizeProviderConfigString(value) : value,
+    ]),
+  ) as T;
+};
+
 class ConfigManager {
   configPath: string = path.join(
     process.env.DATA_DIR || process.cwd(),
@@ -220,10 +236,12 @@ class ConfigManager {
       };
 
       provider.fields.forEach((field) => {
+        const rawValue =
+          process.env[field.env!] || field.default || ''; /* Env var must exist for providers */
         newProvider.config[field.key] =
-          process.env[field.env!] ||
-          field.default ||
-          ''; /* Env var must exist for providers */
+          typeof rawValue === 'string'
+            ? sanitizeProviderConfigString(rawValue)
+            : rawValue;
 
         if (field.required) newProvider.required?.push(field.key);
       });
@@ -299,14 +317,15 @@ class ConfigManager {
   }
 
   public addModelProvider(type: string, name: string, config: any) {
+    const sanitizedConfig = sanitizeProviderConfig(config);
     const newModelProvider: ConfigModelProvider = {
       id: crypto.randomUUID(),
       name,
       type,
-      config,
+      config: sanitizedConfig,
       chatModels: [],
       embeddingModels: [],
-      hash: hashObj(config),
+      hash: hashObj(sanitizedConfig),
     };
 
     this.currentConfig.modelProviders.push(newModelProvider);
@@ -348,9 +367,10 @@ class ConfigManager {
 
     if (!provider) throw new Error('Provider not found');
 
+    const sanitizedConfig = sanitizeProviderConfig(config);
     provider.name = name;
-    provider.config = config;
-    provider.hash = hashObj(config);
+    provider.config = sanitizedConfig;
+    provider.hash = hashObj(sanitizedConfig);
 
     this.saveConfig();
 
@@ -496,9 +516,22 @@ class ConfigManager {
   /** Load model providers from DB into in-memory config (DB is source of truth). */
   public async loadModelProvidersFromDb(): Promise<void> {
     const { getAllModelProviders } = await import('../db/modelProviders');
+    const { syncAllModelProvidersToDb } = await import('../db/modelProviders');
     const providers = await getAllModelProviders();
     if (providers.length > 0) {
-      this.currentConfig.modelProviders = providers;
+      const sanitizedProviders = providers.map((provider) => ({
+        ...provider,
+        config: sanitizeProviderConfig(provider.config),
+      }));
+
+      this.currentConfig.modelProviders = sanitizedProviders;
+
+      if (
+        JSON.stringify(sanitizedProviders.map((provider) => provider.config)) !==
+        JSON.stringify(providers.map((provider) => provider.config))
+      ) {
+        await syncAllModelProvidersToDb(sanitizedProviders);
+      }
     }
   }
 
