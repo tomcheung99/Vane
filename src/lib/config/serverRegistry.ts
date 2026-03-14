@@ -16,3 +16,9 @@ export const getSearxngURL = () =>
 
 export const getMcpServers = (): Record<string, McpServerEntry> =>
   configManager.getMcpServers();
+
+export const getRerankerEnabled = (): boolean =>
+  configManager.getConfig('preferences.rerankerEnabled', true);
+
+export const getRerankerTopN = (): number =>
+  parseInt(configManager.getConfig('preferences.rerankerTopN', '100'), 10);

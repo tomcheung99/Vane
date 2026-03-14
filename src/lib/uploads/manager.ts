@@ -92,7 +92,7 @@ class UploadManager {
                 const content = fs.readFileSync(filePath, 'utf-8');
 
                 const splittedText = splitText(content, 512, 128)
-                const embeddings = await this.embeddingModel.embedText(splittedText)
+                const embeddings = await this.embeddingModel.embedDocument(splittedText)
 
                 if (embeddings.length !== splittedText.length) {
                     throw new Error('Embeddings and text chunks length mismatch');
@@ -123,7 +123,7 @@ class UploadManager {
                 const pdfText = await parser.getText().then(res => res.text)
 
                 const pdfSplittedText = splitText(pdfText, 512, 128)
-                const pdfEmbeddings = await this.embeddingModel.embedText(pdfSplittedText)
+                const pdfEmbeddings = await this.embeddingModel.embedDocument(pdfSplittedText)
 
                 if (pdfEmbeddings.length !== pdfSplittedText.length) {
                     throw new Error('Embeddings and text chunks length mismatch');
@@ -149,7 +149,7 @@ class UploadManager {
                 const docText = await officeParser.parseOfficeAsync(docBuffer)
 
                 const docSplittedText = splitText(docText, 512, 128)
-                const docEmbeddings = await this.embeddingModel.embedText(docSplittedText)
+                const docEmbeddings = await this.embeddingModel.embedDocument(docSplittedText)
 
                 if (docEmbeddings.length !== docSplittedText.length) {
                     throw new Error('Embeddings and text chunks length mismatch');

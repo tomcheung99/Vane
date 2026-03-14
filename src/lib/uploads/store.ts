@@ -3,6 +3,7 @@ import UploadManager from "./manager";
 import computeSimilarity from "../utils/computeSimilarity";
 import { Chunk } from "../types";
 import { hashObj } from "../serverUtils";
+import { rerank } from "../reranker";
 import fs from 'fs';
 
 type UploadStoreParams = {
@@ -52,7 +53,7 @@ class UploadStore {
     }
 
     async query(queries: string[], topK: number): Promise<Chunk[]> {
-        const queryEmbeddings = await this.embeddingModel.embedText(queries)
+        const queryEmbeddings = await this.embeddingModel.embedQuery(queries)
 
         const results: { chunk: Chunk; score: number; }[][] = [];
         const hashResults: string[][] = []
@@ -94,7 +95,17 @@ class UploadStore {
                 return chunkMap.get(chunkHash)!;
             })
 
-        return finalResults.slice(0, topK);
+        const initialResults = finalResults.slice(0, topK * 2);
+
+        // Rerank with bge-reranker-v2-m3
+        const combinedQuery = queries.join(' ');
+        try {
+            const reranked = await rerank(combinedQuery, initialResults, topK);
+            return reranked;
+        } catch (err) {
+            console.warn('Reranker failed, falling back to cosine similarity:', err);
+            return initialResults.slice(0, topK);
+        }
     }
 
     static getFileData(fileIds: string[]): { fileName: string; initialContent: string }[] {

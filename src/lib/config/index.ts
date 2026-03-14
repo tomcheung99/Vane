@@ -88,6 +88,30 @@ class ConfigManager {
         default: true,
         scope: 'client',
       },
+      {
+        name: 'Reranker',
+        key: 'rerankerEnabled',
+        type: 'switch',
+        required: false,
+        description: 'Enable bge-reranker-v2-m3 to rerank search results for better relevance.',
+        default: true,
+        scope: 'server',
+      },
+      {
+        name: 'Reranker Top N Candidates',
+        key: 'rerankerTopN',
+        type: 'select',
+        options: [
+          { name: '20', value: '20' },
+          { name: '50', value: '50' },
+          { name: '100', value: '100' },
+          { name: '200', value: '200' },
+        ],
+        required: false,
+        description: 'Number of candidates to pass to the reranker. Higher values improve quality but are slower.',
+        default: '100',
+        scope: 'server',
+      },
     ],
     personalization: [
       {

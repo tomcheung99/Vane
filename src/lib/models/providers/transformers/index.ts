@@ -5,10 +5,17 @@ import BaseModelProvider from '../../base/provider';
 import BaseLLM from '../../base/llm';
 import BaseEmbedding from '../../base/embedding';
 import TransformerEmbedding from './transformerEmbedding';
+import EmbeddingGemmaEmbedding from './embeddingGemmaEmbedding';
 
 interface TransformersConfig {}
 
+const EMBEDDING_GEMMA_KEY = 'onnx-community/embeddinggemma-300m-ONNX';
+
 const defaultEmbeddingModels: Model[] = [
+  {
+    name: 'EmbeddingGemma 300M',
+    key: EMBEDDING_GEMMA_KEY,
+  },
   {
     name: 'all-MiniLM-L6-v2',
     key: 'Xenova/all-MiniLM-L6-v2',
@@ -62,6 +69,10 @@ class TransformersProvider extends BaseModelProvider<TransformersConfig> {
       throw new Error(
         'Error Loading OpenAI Embedding Model. Invalid Model Selected.',
       );
+    }
+
+    if (key === EMBEDDING_GEMMA_KEY) {
+      return new EmbeddingGemmaEmbedding({ model: key });
     }
 
     return new TransformerEmbedding({
