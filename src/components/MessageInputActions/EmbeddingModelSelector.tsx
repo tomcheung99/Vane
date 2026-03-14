@@ -86,7 +86,7 @@ const EmbeddingModelSelector = () => {
           <AnimatePresence>
             {open && (
               <PopoverPanel
-                className="absolute z-50 w-[230px] sm:w-[270px] md:w-[300px] right-0 bottom-full mb-2"
+                className="fixed sm:absolute z-50 inset-x-3 sm:inset-x-auto sm:w-[270px] md:w-[300px] sm:right-0 bottom-full mb-2"
                 static
               >
                 <motion.div
@@ -94,7 +94,7 @@ const EmbeddingModelSelector = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.1, ease: 'easeOut' }}
-                  className="origin-bottom-right bg-light-primary dark:bg-dark-primary max-h-[300px] sm:max-w-none border rounded-lg border-light-200 dark:border-dark-200 w-full flex flex-col shadow-lg overflow-hidden"
+                  className="origin-bottom-right bg-light-primary dark:bg-dark-primary max-h-[50vh] sm:max-h-[300px] sm:max-w-none border rounded-lg border-light-200 dark:border-dark-200 w-full flex flex-col shadow-lg overflow-hidden"
                 >
                   <div className="p-2 border-b border-light-200 dark:border-dark-200">
                     <div className="relative">
@@ -112,7 +112,7 @@ const EmbeddingModelSelector = () => {
                     </div>
                   </div>
 
-                  <div className="max-h-[320px] overflow-y-auto">
+                  <div className="max-h-[40vh] sm:max-h-[320px] overflow-y-auto">
                     {isLoading ? (
                       <div className="flex items-center justify-center py-16">
                         <Loader2

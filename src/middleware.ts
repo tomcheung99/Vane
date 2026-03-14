@@ -22,8 +22,8 @@ export async function middleware(request: NextRequest) {
   }
 
   const secret = process.env.AUTH_SECRET;
-  if (!secret) {
-    // Auth not configured yet (first startup) — allow access
+  if (!secret || process.env.WEBAUTHN_REGISTERED !== 'true') {
+    // Auth not configured or no passkey registered yet — allow access
     return NextResponse.next();
   }
 

@@ -53,6 +53,8 @@ export async function saveCredential(cred: StoredCredential): Promise<void> {
     transports: cred.transports ? JSON.stringify(cred.transports) : null,
     createdAt: new Date().toISOString(),
   });
+  // Enable auth enforcement now that a credential exists
+  process.env.WEBAUTHN_REGISTERED = 'true';
 }
 
 export async function updateCredentialCounter(id: string, counter: number): Promise<void> {
