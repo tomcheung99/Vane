@@ -1,6 +1,7 @@
 import { getRerankerEnabled, getRerankerTopN } from '../config/serverRegistry';
 
-const MODEL_ID = 'onnx-community/bge-reranker-v2-m3-ONNX';
+export const RERANKER_MODEL_ID = 'onnx-community/bge-reranker-v2-m3-ONNX';
+const MODEL_ID = RERANKER_MODEL_ID;
 
 let rerankerPromise: Promise<any> | null = null;
 

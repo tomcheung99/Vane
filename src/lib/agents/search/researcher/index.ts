@@ -5,6 +5,9 @@ import SessionManager from '@/lib/session';
 import { Message, ReasoningResearchBlock } from '@/lib/types';
 import formatChatHistoryAsString from '@/lib/utils/formatHistory';
 import { ToolCall } from '@/lib/models/types';
+import { getRerankerEnabled } from '@/lib/config/serverRegistry';
+import { getMcpServers } from '@/lib/config/serverRegistry';
+import { RERANKER_MODEL_ID } from '@/lib/reranker';
 
 class Researcher {
   async research(
@@ -43,6 +46,51 @@ class Researcher {
         subSteps: [],
       },
     });
+
+    // Emit active tools summary at the start of research
+    const summaryBlock = session.getBlock(researchBlockId);
+    if (summaryBlock && summaryBlock.type === 'research') {
+      const mcpServers = getMcpServers();
+      const mcpServerNames = Object.keys(mcpServers);
+      const rerankerEnabled = getRerankerEnabled();
+      const hasFiles = input.config.fileIds.length > 0;
+
+      const badges: string[] = [];
+      badges.push(`search: ${input.config.sources.join(', ')}`);
+      badges.push(`mode: ${input.config.mode}`);
+
+      if (mcpServerNames.length > 0) {
+        badges.push(`MCP: ${mcpServerNames.join(', ')}`);
+      } else {
+        badges.push('MCP: none');
+      }
+
+      if (rerankerEnabled) {
+        badges.push(`reranker: ${RERANKER_MODEL_ID.split('/').pop()}`);
+      } else {
+        badges.push('reranker: off');
+      }
+
+      if (hasFiles) {
+        badges.push(`files: ${input.config.fileIds.length}`);
+      }
+
+      summaryBlock.data.subSteps.push({
+        id: crypto.randomUUID(),
+        type: 'tool_usage',
+        tool: 'summary',
+        label: 'Active Integrations',
+        badges,
+      });
+
+      session.updateBlock(researchBlockId, [
+        {
+          op: 'replace',
+          path: '/data/subSteps',
+          value: summaryBlock.data.subSteps,
+        },
+      ]);
+    }
 
     const agentMessageHistory: Message[] = [
       {

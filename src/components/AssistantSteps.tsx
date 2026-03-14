@@ -11,6 +11,7 @@ import {
   Database,
   ArrowUpDown,
   Layers,
+  Settings2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
@@ -33,6 +34,7 @@ const getStepIcon = (step: ResearchBlockSubStep) => {
     if (step.tool === 'mcp') return <Database className="w-4 h-4" />;
     if (step.tool === 'reranker') return <ArrowUpDown className="w-4 h-4" />;
     if (step.tool === 'chunking') return <Layers className="w-4 h-4" />;
+    if (step.tool === 'summary') return <Settings2 className="w-4 h-4" />;
     return <Wrench className="w-4 h-4" />;
   }
 
