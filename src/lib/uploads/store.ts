@@ -3,7 +3,7 @@ import UploadManager from "./manager";
 import computeSimilarity from "../utils/computeSimilarity";
 import { Chunk } from "../types";
 import { hashObj } from "../serverUtils";
-import { rerank } from "../reranker";
+import { RerankExecutionMetadata, rerankWithMetadata } from "../reranker";
 import fs from 'fs';
 
 type UploadStoreParams = {
@@ -52,7 +52,7 @@ class UploadStore {
         })
     }
 
-    async query(queries: string[], topK: number): Promise<Chunk[]> {
+    async query(queries: string[], topK: number): Promise<{ results: Chunk[]; reranker: RerankExecutionMetadata }> {
         const queryEmbeddings = await this.embeddingModel.embedQuery(queries)
 
         const results: { chunk: Chunk; score: number; }[][] = [];
@@ -100,11 +100,24 @@ class UploadStore {
         // Rerank with bge-reranker-v2-m3
         const combinedQuery = queries.join(' ');
         try {
-            const reranked = await rerank(combinedQuery, initialResults, topK);
-            return reranked;
+            const { results: reranked, metadata } = await rerankWithMetadata(combinedQuery, initialResults, topK);
+            return {
+                results: reranked,
+                reranker: metadata,
+            };
         } catch (err) {
             console.warn('Reranker failed, falling back to cosine similarity:', err);
-            return initialResults.slice(0, topK);
+            return {
+                results: initialResults.slice(0, topK),
+                reranker: {
+                    enabled: true,
+                    applied: false,
+                    modelId: 'onnx-community/bge-reranker-v2-m3-ONNX',
+                    topN: initialResults.length,
+                    inputCount: initialResults.length,
+                    outputCount: Math.min(initialResults.length, topK),
+                },
+            };
         }
     }
 

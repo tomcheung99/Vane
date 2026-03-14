@@ -4,7 +4,7 @@ import { classify } from './classifier';
 import Researcher from './researcher';
 import { getWriterPrompt } from '@/lib/prompts/search/writer';
 import { WidgetExecutor } from './widgets';
-import { searchMemories } from '@/lib/mcp';
+import { searchMemoriesWithMetadata } from '@/lib/mcp';
 import { extractAndSaveMemory } from '@/lib/mcp/memoryExtractor';
 
 class APISearchAgent {
@@ -47,10 +47,6 @@ class APISearchAgent {
       });
     }
 
-    session.emit('data', {
-      type: 'researchComplete',
-    });
-
     const finalContext =
       searchResults?.searchFindings
         .map(
@@ -69,8 +65,12 @@ class APISearchAgent {
 
     let memoryContext: string | null = null;
     try {
-      memoryContext = await searchMemories(input.followUp);
+      memoryContext = (await searchMemoriesWithMetadata(input.followUp)).content;
     } catch { /* non-critical */ }
+
+    session.emit('data', {
+      type: 'researchComplete',
+    });
 
     const writerPrompt = getWriterPrompt(
       finalContextWithWidgets,

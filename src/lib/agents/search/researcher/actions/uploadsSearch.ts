@@ -54,7 +54,7 @@ const uploadsSearchAction: ResearchAction<typeof schema> = {
       fileIds: additionalConfig.fileIds,
     });
 
-    const results = await uploadStore.query(input.queries, 10);
+    const { results, reranker } = await uploadStore.query(input.queries, 10);
 
     const seenIds = new Map<string, number>();
 
@@ -77,6 +77,23 @@ const uploadsSearchAction: ResearchAction<typeof schema> = {
       .filter((r) => r !== undefined);
 
     if (researchBlock && researchBlock.type === 'research') {
+      if (reranker.enabled) {
+        researchBlock.data.subSteps.push({
+          id: crypto.randomUUID(),
+          type: 'tool_usage',
+          tool: 'reranker',
+          label: reranker.applied ? 'Using reranker' : 'Reranker unavailable, using fallback order',
+          description: reranker.applied
+            ? `${reranker.modelId} reranked ${reranker.inputCount} candidates and kept ${reranker.outputCount} results.`
+            : `${reranker.modelId} was enabled but could not finish, so document results stayed in similarity order.`,
+          badges: [
+            `model: ${reranker.modelId.split('/').pop()}`,
+            `candidates: ${reranker.inputCount}`,
+            `top: ${reranker.outputCount}`,
+          ],
+        });
+      }
+
       researchBlock.data.subSteps.push({
         id: crypto.randomUUID(),
         type: 'upload_search_results',

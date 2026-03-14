@@ -8,7 +8,7 @@ import db from '@/lib/db';
 import { chats, messages } from '@/lib/db/schema';
 import { and, eq, gt } from 'drizzle-orm';
 import { TextBlock } from '@/lib/types';
-import { searchMemories } from '@/lib/mcp';
+import { searchMemoriesWithMetadata } from '@/lib/mcp';
 import { extractAndSaveMemory } from '@/lib/mcp/memoryExtractor';
 
 class SearchAgent {
@@ -96,10 +96,6 @@ class SearchAgent {
       searchPromise,
     ]);
 
-    session.emit('data', {
-      type: 'researchComplete',
-    });
-
     const finalContext =
       searchResults?.searchFindings
         .map(
@@ -118,8 +114,37 @@ class SearchAgent {
 
     let memoryContext: string | null = null;
     try {
-      memoryContext = await searchMemories(input.followUp);
-    } catch { /* non-critical */ }
+      const memoryResult = await searchMemoriesWithMetadata(input.followUp);
+      memoryContext = memoryResult.content;
+
+      if (searchResults?.researchBlockId && memoryResult.usage) {
+        const researchBlock = session.getBlock(searchResults.researchBlockId);
+
+        if (researchBlock && researchBlock.type === 'research') {
+          researchBlock.data.subSteps.push({
+            id: crypto.randomUUID(),
+            type: 'tool_usage',
+            tool: 'mcp',
+            label: `Using MCP: ${memoryResult.usage.serverName}`,
+            description: `Queried memory context with ${memoryResult.usage.toolName} before drafting the answer.`,
+            badges: [
+              `server: ${memoryResult.usage.serverName}`,
+              `tool: ${memoryResult.usage.toolName}`,
+            ],
+          });
+
+          session.updateBlock(searchResults.researchBlockId, [
+            {
+              op: 'replace',
+              path: '/data/subSteps',
+              value: researchBlock.data.subSteps,
+            },
+          ]);
+        }
+      }
+    } catch {
+      /* non-critical */
+    }
 
     const writerPrompt = getWriterPrompt(
       finalContextWithWidgets,
@@ -184,6 +209,7 @@ class SearchAgent {
       .where(
         and(
           eq(messages.chatId, input.chatId),
+          eq(messages.messageId, input.messageId),
           eq(messages.messageId, input.messageId),
         ),
       )

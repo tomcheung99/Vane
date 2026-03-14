@@ -44,14 +44,14 @@ const Sources = () => {
             {open && (
               <PopoverPanel
                 static
-                className="absolute z-10 w-64 md:w-[225px] right-0"
+                className="absolute z-50 w-64 md:w-[225px] right-0 bottom-full mb-2"
               >
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.1, ease: 'easeOut' }}
-                  className="origin-top-right flex flex-col bg-light-primary dark:bg-dark-primary border rounded-lg border-light-200 dark:border-dark-200 w-full p-1 max-h-[200px] md:max-h-none overflow-y-auto shadow-lg"
+                  className="origin-bottom-right flex flex-col bg-light-primary dark:bg-dark-primary border rounded-lg border-light-200 dark:border-dark-200 w-full p-1 max-h-[200px] md:max-h-none overflow-y-auto shadow-lg"
                 >
                   {sourcesList.map((source, i) => (
                     <div

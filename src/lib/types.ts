@@ -98,6 +98,14 @@ export type UploadSearchResultsResearchBlock = {
   type: 'upload_search_results';
   results: Chunk[];
 };
+export type ToolUsageResearchBlock = {
+  id: string;
+  type: 'tool_usage';
+  tool: 'mcp' | 'reranker';
+  label: string;
+  description?: string;
+  badges?: string[];
+};
 
 export type ResearchBlockSubStep =
   | ReasoningResearchBlock
@@ -105,7 +113,8 @@ export type ResearchBlockSubStep =
   | SearchResultsResearchBlock
   | ReadingResearchBlock
   | UploadSearchingResearchBlock
-  | UploadSearchResultsResearchBlock;
+  | UploadSearchResultsResearchBlock
+  | ToolUsageResearchBlock;
 
 export type ResearchBlock = {
   id: string;

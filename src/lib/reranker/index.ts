@@ -4,6 +4,15 @@ const MODEL_ID = 'onnx-community/bge-reranker-v2-m3-ONNX';
 
 let rerankerPromise: Promise<any> | null = null;
 
+export type RerankExecutionMetadata = {
+  enabled: boolean;
+  applied: boolean;
+  modelId: string;
+  topN: number;
+  inputCount: number;
+  outputCount: number;
+};
+
 async function loadReranker() {
   if (!rerankerPromise) {
     rerankerPromise = (async () => {
@@ -18,6 +27,7 @@ async function loadReranker() {
       return { tokenizer, model };
     })();
   }
+
   return rerankerPromise;
 }
 
@@ -30,16 +40,47 @@ export async function rerank<T extends { content: string }>(
   candidates: T[],
   topK: number,
 ): Promise<T[]> {
-  if (candidates.length === 0) return [];
+  const { results } = await rerankWithMetadata(query, candidates, topK);
+  return results;
+}
 
-  if (!getRerankerEnabled()) {
-    return candidates.slice(0, topK);
+export async function rerankWithMetadata<T extends { content: string }>(
+  query: string,
+  candidates: T[],
+  topK: number,
+): Promise<{ results: T[]; metadata: RerankExecutionMetadata }> {
+  const rerankTopN = getRerankerTopN();
+
+  if (candidates.length === 0) {
+    return {
+      results: [],
+      metadata: {
+        enabled: getRerankerEnabled(),
+        applied: false,
+        modelId: MODEL_ID,
+        topN: rerankTopN,
+        inputCount: 0,
+        outputCount: 0,
+      },
+    };
   }
 
-  const rerankTopN = getRerankerTopN();
+  if (!getRerankerEnabled()) {
+    return {
+      results: candidates.slice(0, topK),
+      metadata: {
+        enabled: false,
+        applied: false,
+        modelId: MODEL_ID,
+        topN: rerankTopN,
+        inputCount: Math.min(candidates.length, rerankTopN),
+        outputCount: Math.min(candidates.length, topK),
+      },
+    };
+  }
+
   const toRerank = candidates.slice(0, rerankTopN);
   const { tokenizer, model } = await loadReranker();
-
   const scored: { item: T; score: number }[] = [];
 
   for (const item of toRerank) {
@@ -54,5 +95,16 @@ export async function rerank<T extends { content: string }>(
   }
 
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, topK).map((s) => s.item);
+
+  return {
+    results: scored.slice(0, topK).map((s) => s.item),
+    metadata: {
+      enabled: true,
+      applied: true,
+      modelId: MODEL_ID,
+      topN: rerankTopN,
+      inputCount: toRerank.length,
+      outputCount: Math.min(scored.length, topK),
+    },
+  };
 }

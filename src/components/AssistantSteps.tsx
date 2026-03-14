@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   BookSearch,
+  Wrench,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
@@ -25,6 +26,8 @@ const getStepIcon = (step: ResearchBlockSubStep) => {
     return <FileText className="w-4 h-4" />;
   } else if (step.type === 'reading') {
     return <BookSearch className="w-4 h-4" />;
+  } else if (step.type === 'tool_usage') {
+    return <Wrench className="w-4 h-4" />;
   }
 
   return null;
@@ -46,6 +49,8 @@ const getStepTitle = (
     return 'Scanning your uploaded documents';
   } else if (step.type === 'upload_search_results') {
     return `Reading ${step.results.length} ${step.results.length === 1 ? 'document' : 'documents'}`;
+  } else if (step.type === 'tool_usage') {
+    return step.label;
   }
 
   return 'Processing';
@@ -251,6 +256,29 @@ const AssistantSteps = ({
                             })}
                           </div>
                         )}
+
+                      {step.type === 'tool_usage' && (
+                        <>
+                          {step.description && (
+                            <p className="text-xs text-black/70 dark:text-white/70 mt-0.5">
+                              {step.description}
+                            </p>
+                          )}
+
+                          {step.badges && step.badges.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                              {step.badges.map((badge, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-light-100 dark:bg-dark-100 text-black/70 dark:text-white/70 border border-light-200 dark:border-dark-200"
+                                >
+                                  {badge}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </motion.div>
                 );

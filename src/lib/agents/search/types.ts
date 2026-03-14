@@ -78,6 +78,7 @@ export type ResearcherInput = {
 export type ResearcherOutput = {
   findings: ActionOutput[];
   searchFindings: Chunk[];
+  researchBlockId: string;
 };
 
 export type SearchActionOutput = {

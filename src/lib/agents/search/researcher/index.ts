@@ -215,6 +215,7 @@ class Researcher {
     return {
       findings: actionOutput,
       searchFindings: filteredSearchResults,
+      researchBlockId,
     };
   }
 }

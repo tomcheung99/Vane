@@ -15,6 +15,11 @@ const MEMORY_ADD_TOOL_NAMES = [
   'openmemory_store',
 ];
 
+export type McpUsageMetadata = {
+  serverName: string;
+  toolName: string;
+};
+
 export async function ensureMcpConnected(): Promise<void> {
   if (initialized) return;
 
@@ -36,12 +41,24 @@ export async function reconnectMcp(): Promise<void> {
 }
 
 export async function searchMemories(query: string): Promise<string | null> {
+  const result = await searchMemoriesWithMetadata(query);
+  return result.content;
+}
+
+export async function searchMemoriesWithMetadata(
+  query: string,
+): Promise<{ content: string | null; usage: McpUsageMetadata | null }> {
   await ensureMcpConnected();
 
   const tools = mcpClientManager.listTools();
   const memoryTool = tools.find((t) => MEMORY_SEARCH_TOOL_NAMES.includes(t.name));
 
-  if (!memoryTool) return null;
+  if (!memoryTool) {
+    return {
+      content: null,
+      usage: null,
+    };
+  }
 
   try {
     const result = await mcpClientManager.callTool(
@@ -55,10 +72,22 @@ export async function searchMemories(query: string): Promise<string | null> {
       .map((c) => c.text)
       .join('\n');
 
-    return text || null;
+    return {
+      content: text || null,
+      usage: {
+        serverName: memoryTool.serverName,
+        toolName: memoryTool.name,
+      },
+    };
   } catch (err) {
     console.error('[MCP] Memory search failed:', err);
-    return null;
+    return {
+      content: null,
+      usage: {
+        serverName: memoryTool.serverName,
+        toolName: memoryTool.name,
+      },
+    };
   }
 }
 
