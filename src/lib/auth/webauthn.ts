@@ -3,6 +3,8 @@ import { webauthnCredentials } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 
+const INVALID_RP_IDS = new Set(['0.0.0.0', '::', '[::]']);
+
 export interface StoredCredential {
   id: string;
   publicKey: Uint8Array;
@@ -66,11 +68,32 @@ export async function hasCredentials(): Promise<boolean> {
   return rows.length > 0;
 }
 
+function normalizeRpId(hostname: string) {
+  return INVALID_RP_IDS.has(hostname) ? 'localhost' : hostname;
+}
+
+function getRequestUrl(request: Request) {
+  const requestUrl = new URL(request.url);
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const host = forwardedHost ?? request.headers.get('host');
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+
+  if (!host) {
+    return requestUrl;
+  }
+
+  const protocol = forwardedProto ?? requestUrl.protocol.replace(/:$/, '');
+  return new URL(`${protocol}://${host}`);
+}
+
 export function getRpConfig(request: Request) {
-  const url = new URL(request.url);
+  const configuredOrigin = process.env.AUTH_WEBAUTHN_ORIGIN ?? process.env.AUTH_URL;
+  const originUrl = configuredOrigin ? new URL(configuredOrigin) : getRequestUrl(request);
+  const configuredRpId = process.env.AUTH_WEBAUTHN_RP_ID;
+
   return {
-    rpID: url.hostname,
+    rpID: normalizeRpId(configuredRpId ?? originUrl.hostname),
     rpName: 'Vane',
-    origin: url.origin,
+    origin: originUrl.origin,
   };
 }

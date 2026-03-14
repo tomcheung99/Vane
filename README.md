@@ -232,6 +232,25 @@ For more details, check out the full documentation [here](https://github.com/Itz
 
 Vane runs on Next.js and handles all API requests. It works right away on the same network and stays accessible even with port forwarding.
 
+### Passkey setup
+
+If you enable passkey authentication, do not open Vane in the browser via `0.0.0.0`. WebAuthn rejects that host as an RP ID.
+
+- Use `http://localhost:3000` for local access.
+- If you access Vane through a LAN IP, reverse proxy, or real domain, set these environment variables so WebAuthn uses the correct relying party values:
+
+```bash
+AUTH_WEBAUTHN_ORIGIN=https://your-domain-or-host
+AUTH_WEBAUTHN_RP_ID=your-domain-or-host
+```
+
+Examples:
+
+- Local machine: `AUTH_WEBAUTHN_ORIGIN=http://localhost:3000`
+- Reverse proxy/domain: `AUTH_WEBAUTHN_ORIGIN=https://search.example.com` and `AUTH_WEBAUTHN_RP_ID=search.example.com`
+
+If `AUTH_WEBAUTHN_RP_ID` is omitted, Vane derives it from `AUTH_WEBAUTHN_ORIGIN` or the incoming request host. Invalid bind addresses such as `0.0.0.0` are normalized to `localhost`.
+
 ## One-Click Deployment
 
 [![Deploy to Sealos](https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg)](https://usw.sealos.io/?openapp=system-template%3FtemplateName%3Dperplexica)
