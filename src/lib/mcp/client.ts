@@ -8,6 +8,22 @@ interface ConnectedServer {
   tools: McpToolInfo[];
 }
 
+/** Strip non-Latin1 chars (>255) from header values to prevent ByteString errors */
+function sanitizeHeaderValue(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[^\x00-\xFF]/g, '');
+}
+
+function sanitizeHeaders(
+  headers: Record<string, string>,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) {
+    out[sanitizeHeaderValue(k)] = sanitizeHeaderValue(v);
+  }
+  return out;
+}
+
 class McpClientManager {
   private servers: Map<string, ConnectedServer> = new Map();
   private connecting: Map<string, Promise<void>> = new Map();
@@ -48,9 +64,7 @@ class McpClientManager {
   private async _connect(name: string, config: McpServerConfig): Promise<void> {
     const url = new URL(config.url);
 
-    const headers: Record<string, string> = {
-      ...(config.headers || {}),
-    };
+    const headers: Record<string, string> = sanitizeHeaders(config.headers || {});
 
     const transport = new SSEClientTransport(url, {
       eventSourceInit: {

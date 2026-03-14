@@ -131,11 +131,15 @@ const WeatherWidget = () => {
       ) : (
         <>
           <div className="flex flex-col items-center justify-center w-16 min-w-16 max-w-16 h-full">
-            <img
-              src={`/weather-ico/${data.icon}.svg`}
-              alt={data.condition}
-              className="h-10 w-auto"
-            />
+            {data.icon ? (
+              <img
+                src={`/weather-ico/${data.icon}.svg`}
+                alt={data.condition}
+                className="h-10 w-auto"
+              />
+            ) : (
+              <Sun className="h-10 w-10 text-yellow-400" />
+            )}
             <span className="text-base font-semibold text-black dark:text-white">
               {data.temperature}°{data.temperatureUnit}
             </span>
