@@ -1,11 +1,9 @@
 import { sql } from 'drizzle-orm';
-import { text, integer, pgTable, pgSchema, jsonb, serial } from 'drizzle-orm/pg-core';
+import { text, pgTable, jsonb, serial } from 'drizzle-orm/pg-core';
 import { Block } from '../types';
 import { SearchSources } from '../agents/search/types';
 
-export const vaneSchema = pgSchema('vane');
-
-export const messages = vaneSchema.table('messages', {
+export const messages = pgTable('messages', {
   id: serial('id').primaryKey(),
   messageId: text('messageId').notNull(),
   chatId: text('chatId').notNull(),
@@ -25,7 +23,7 @@ interface DBFile {
   fileId: string;
 }
 
-export const chats = vaneSchema.table('chats', {
+export const chats = pgTable('chats', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   createdAt: text('createdAt').notNull(),
