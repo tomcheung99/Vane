@@ -1,4 +1,22 @@
 import pkg from './package.json' with { type: 'json' };
+import { readFileSync, existsSync } from 'fs';
+
+// Load AUTH_SECRET from persistent file if not already set in environment.
+// This ensures the secret is available to Edge Runtime middleware on server
+// restarts after the initial setup.
+if (!process.env.AUTH_SECRET) {
+  try {
+    const authSecretPath = './data/auth_secret';
+    if (existsSync(authSecretPath)) {
+      const secret = readFileSync(authSecretPath, 'utf8').trim();
+      if (secret) {
+        process.env.AUTH_SECRET = secret;
+      }
+    }
+  } catch {
+    // File not accessible; AUTH_SECRET must be provided via environment variable
+  }
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
