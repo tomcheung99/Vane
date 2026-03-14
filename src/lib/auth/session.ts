@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { authSettings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -69,6 +69,13 @@ export function clearSessionOnResponse(response: NextResponse): void {
 export async function isAuthenticated(): Promise<boolean> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!token) return false;
+  return verifySessionToken(token);
+}
+
+/** Read session from request directly — avoids cookies() mutable context in Route Handlers */
+export async function isAuthenticatedFromRequest(request: NextRequest): Promise<boolean> {
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
   if (!token) return false;
   return verifySessionToken(token);
 }

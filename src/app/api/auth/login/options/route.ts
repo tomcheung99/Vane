@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAuthenticationOptions } from '@simplewebauthn/server';
-import { cookies } from 'next/headers';
 import { getCredentials, getRpConfig } from '@/lib/auth/webauthn';
 
 export async function POST(request: NextRequest) {
@@ -24,16 +23,16 @@ export async function POST(request: NextRequest) {
       userVerification: 'preferred',
     });
 
-    const cookieStore = await cookies();
-    cookieStore.set('webauthn_challenge', options.challenge, {
+    // Set challenge cookie on the response directly
+    const response = NextResponse.json(options);
+    response.cookies.set('webauthn_challenge', options.challenge, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 300,
       path: '/',
     });
 
-    return NextResponse.json(options);
+    return response;
   } catch (err) {
     console.error('[Auth] Login options failed:', err);
     return NextResponse.json(

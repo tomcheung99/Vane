@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateRegistrationOptions } from '@simplewebauthn/server';
-import { cookies } from 'next/headers';
 import { getCredentials, hasCredentials, getRpConfig } from '@/lib/auth/webauthn';
-import { isAuthenticated } from '@/lib/auth/session';
+import { isAuthenticatedFromRequest } from '@/lib/auth/session';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     // Only allow registration if no credentials exist OR user is authenticated
     if (hasCreds) {
-      const authed = await isAuthenticated();
+      const authed = await isAuthenticatedFromRequest(request);
       if (!authed) {
         return NextResponse.json(
           { error: 'Registration not allowed. Please sign in first.' },
@@ -38,17 +37,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Store challenge in cookie for verification step
-    const cookieStore = await cookies();
-    cookieStore.set('webauthn_challenge', options.challenge, {
+    // Set challenge cookie on the response directly
+    const response = NextResponse.json(options);
+    response.cookies.set('webauthn_challenge', options.challenge, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 300, // 5 minutes
+      maxAge: 300,
       path: '/',
     });
 
-    return NextResponse.json(options);
+    return response;
   } catch (err) {
     console.error('[Auth] Register options failed:', err);
     return NextResponse.json(

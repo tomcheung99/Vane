@@ -34,9 +34,11 @@ export async function middleware(request: NextRequest) {
       const key = new TextEncoder().encode(secret);
       await jwtVerify(token, key);
       return NextResponse.next();
-    } catch {
-      // Invalid/expired token — fall through to redirect
+    } catch (err) {
+      console.warn(`[Auth] JWT verify failed for ${pathname}:`, err instanceof Error ? err.message : err);
     }
+  } else {
+    console.warn(`[Auth] No session cookie for ${pathname}`);
   }
 
   // No valid session

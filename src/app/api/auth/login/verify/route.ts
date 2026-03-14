@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
-import { cookies } from 'next/headers';
 import { getCredentialById, updateCredentialCounter, getRpConfig } from '@/lib/auth/webauthn';
 import { setSessionOnResponse } from '@/lib/auth/session';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const cookieStore = await cookies();
-    const challenge = cookieStore.get('webauthn_challenge')?.value;
+    const challenge = request.cookies.get('webauthn_challenge')?.value;
 
     if (!challenge) {
       return NextResponse.json(
@@ -54,7 +52,6 @@ export async function POST(request: NextRequest) {
       verification.authenticationInfo.newCounter,
     );
 
-    // Build response with session cookie set directly
     const response = NextResponse.json({ verified: true });
     await setSessionOnResponse(response);
     response.cookies.delete('webauthn_challenge');
