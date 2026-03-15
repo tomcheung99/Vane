@@ -60,8 +60,10 @@ type ConfigModelProvider = {
   hash: string;
 };
 
+type McpTransportType = 'sse' | 'streamableHttp' | 'http';
+
 type McpServerEntry = {
-  type: 'sse';
+  type: McpTransportType;
   url: string;
   headers?: Record<string, string>;
   toolTimeout?: number;
@@ -114,6 +116,7 @@ export type {
   StringUIConfigField,
   ModelProviderUISection,
   ConfigModelProvider,
+  McpTransportType,
   McpServerEntry,
   TextareaUIConfigField,
   SwitchUIConfigField,

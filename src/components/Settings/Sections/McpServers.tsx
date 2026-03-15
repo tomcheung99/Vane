@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, Unplug } from 'lucide-react';
+import type { McpTransportType } from '@/lib/config/types';
 
 interface McpServerEntry {
-  type: 'sse';
+  type: McpTransportType;
   url: string;
   headers?: Record<string, string>;
   toolTimeout?: number;
@@ -22,6 +23,7 @@ const McpSection = ({
   );
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newType, setNewType] = useState<McpTransportType>('sse');
   const [newUrl, setNewUrl] = useState('');
   const [newAuthHeader, setNewAuthHeader] = useState('');
   const [newTimeout, setNewTimeout] = useState('60');
@@ -86,7 +88,7 @@ const McpSection = ({
     }
 
     const entry: McpServerEntry = {
-      type: 'sse',
+      type: newType,
       url,
       toolTimeout: parseInt(newTimeout) || 60,
     };
@@ -97,6 +99,7 @@ const McpSection = ({
 
     await saveServer(name, entry);
     setNewName('');
+    setNewType('sse');
     setNewUrl('');
     setNewAuthHeader('');
     setNewTimeout('60');
@@ -135,6 +138,9 @@ const McpSection = ({
                 </p>
               )}
               <p className="text-[11px] text-black/40 dark:text-white/40">
+                Transport: {entry.type === 'streamableHttp' ? 'STREAMABLE HTTP' : entry.type.toUpperCase()}
+              </p>
+              <p className="text-[11px] text-black/40 dark:text-white/40">
                 Timeout: {entry.toolTimeout || 30}s
               </p>
             </div>
@@ -165,9 +171,18 @@ const McpSection = ({
             onChange={(e) => setNewName(e.target.value)}
             className="w-full rounded-lg border border-light-200 bg-light-secondary px-3 py-2 text-xs text-black dark:border-dark-200 dark:bg-dark-secondary dark:text-white"
           />
+          <select
+            value={newType}
+            onChange={(e) => setNewType(e.target.value as McpTransportType)}
+            className="w-full rounded-lg border border-light-200 bg-light-secondary px-3 py-2 text-xs text-black dark:border-dark-200 dark:bg-dark-secondary dark:text-white"
+          >
+            <option value="sse">SSE</option>
+            <option value="streamableHttp">Streamable HTTP</option>
+            <option value="http">HTTP (legacy alias)</option>
+          </select>
           <input
             type="text"
-            placeholder="SSE URL"
+            placeholder={newType === 'sse' ? 'SSE URL' : 'Streamable HTTP MCP URL'}
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
             className="w-full rounded-lg border border-light-200 bg-light-secondary px-3 py-2 text-xs text-black dark:border-dark-200 dark:bg-dark-secondary dark:text-white"

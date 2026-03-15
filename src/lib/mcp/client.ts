@@ -1,10 +1,11 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { McpServerConfig, McpServersConfig, McpToolInfo, McpToolResult } from './types';
 
 interface ConnectedServer {
   client: Client;
-  transport: SSEClientTransport;
+  transport: SSEClientTransport | StreamableHTTPClientTransport;
   tools: McpToolInfo[];
 }
 
@@ -22,6 +23,35 @@ function sanitizeHeaders(
     out[sanitizeHeaderValue(k)] = sanitizeHeaderValue(v);
   }
   return out;
+}
+
+function createTransport(config: McpServerConfig) {
+  const url = new URL(config.url);
+  const headers: Record<string, string> = sanitizeHeaders(config.headers || {});
+
+  if (config.type === 'http' || config.type === 'streamableHttp') {
+    return new StreamableHTTPClientTransport(url, {
+      requestInit: {
+        headers,
+      },
+    });
+  }
+
+  return new SSEClientTransport(url, {
+    eventSourceInit: {
+      fetch: (input: string | URL | Request, init?: RequestInit) => {
+        const newInit = { ...init };
+        newInit.headers = {
+          ...(newInit.headers as Record<string, string> || {}),
+          ...headers,
+        };
+        return fetch(input, newInit);
+      },
+    },
+    requestInit: {
+      headers,
+    },
+  });
 }
 
 class McpClientManager {
@@ -62,25 +92,7 @@ class McpClientManager {
   }
 
   private async _connect(name: string, config: McpServerConfig): Promise<void> {
-    const url = new URL(config.url);
-
-    const headers: Record<string, string> = sanitizeHeaders(config.headers || {});
-
-    const transport = new SSEClientTransport(url, {
-      eventSourceInit: {
-        fetch: (input: string | URL | Request, init?: RequestInit) => {
-          const newInit = { ...init };
-          newInit.headers = {
-            ...(newInit.headers as Record<string, string> || {}),
-            ...headers,
-          };
-          return fetch(input, newInit);
-        },
-      },
-      requestInit: {
-        headers,
-      },
-    });
+    const transport = createTransport(config);
 
     const client = new Client(
       { name: `vane-mcp-client/${name}`, version: '1.0.0' },
@@ -101,7 +113,7 @@ class McpClientManager {
       }));
 
       this.servers.set(name, { client, transport, tools: toolInfos });
-      console.log(`[MCP] Connected to "${name}" — ${toolInfos.length} tools available`);
+      console.log(`[MCP] Connected to "${name}" via ${config.type} — ${toolInfos.length} tools available`);
     } catch (err) {
       console.error(`[MCP] Failed to connect to "${name}":`, err);
       try { await transport.close(); } catch { /* ignore */ }

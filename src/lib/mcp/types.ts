@@ -1,5 +1,7 @@
+export type McpTransportType = 'sse' | 'streamableHttp' | 'http';
+
 export interface McpServerConfig {
-  type: 'sse';
+  type: McpTransportType;
   url: string;
   headers?: Record<string, string>;
   toolTimeout?: number;

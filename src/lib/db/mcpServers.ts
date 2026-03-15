@@ -1,14 +1,22 @@
 import db from './index';
 import { mcpServers } from './schema';
 import { eq } from 'drizzle-orm';
-import type { McpServerEntry } from '../config/types';
+import type { McpServerEntry, McpTransportType } from '../config/types';
+
+const normalizeTransportType = (value: string | null): McpTransportType => {
+  if (value === 'streamableHttp' || value === 'http') {
+    return value;
+  }
+
+  return 'sse';
+};
 
 export async function getAllMcpServers(): Promise<Record<string, McpServerEntry>> {
   const rows = await db.select().from(mcpServers);
   const result: Record<string, McpServerEntry> = {};
   for (const row of rows) {
     result[row.name] = {
-      type: row.type as 'sse',
+      type: normalizeTransportType(row.type),
       url: row.url,
       ...(row.headers ? { headers: row.headers } : {}),
       ...(row.toolTimeout != null ? { toolTimeout: row.toolTimeout } : {}),
