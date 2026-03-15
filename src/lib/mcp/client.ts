@@ -9,6 +9,19 @@ interface ConnectedServer {
   tools: McpToolInfo[];
 }
 
+/** Expand ${VAR} and ${VAR:-default} patterns using process.env */
+function expandEnvVars(value: string): string {
+  return value.replace(/\$\{([^}]+)\}/g, (_match, expr: string) => {
+    const sepIdx = expr.indexOf(':-');
+    if (sepIdx !== -1) {
+      const varName = expr.slice(0, sepIdx);
+      const fallback = expr.slice(sepIdx + 2);
+      return process.env[varName] ?? fallback;
+    }
+    return process.env[expr] ?? '';
+  });
+}
+
 /** Strip non-Latin1 chars (>255) from header values to prevent ByteString errors */
 function sanitizeHeaderValue(value: string): string {
   // eslint-disable-next-line no-control-regex
@@ -26,8 +39,13 @@ function sanitizeHeaders(
 }
 
 function createTransport(config: McpServerConfig) {
-  const url = new URL(config.url);
-  const headers: Record<string, string> = sanitizeHeaders(config.headers || {});
+  const resolvedUrl = expandEnvVars(config.url);
+  const resolvedHeaders: Record<string, string> = {};
+  for (const [k, v] of Object.entries(config.headers || {})) {
+    resolvedHeaders[k] = expandEnvVars(v);
+  }
+  const url = new URL(resolvedUrl);
+  const headers: Record<string, string> = sanitizeHeaders(resolvedHeaders);
 
   if (config.type === 'http' || config.type === 'streamableHttp') {
     return new StreamableHTTPClientTransport(url, {
