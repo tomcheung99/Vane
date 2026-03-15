@@ -45,12 +45,18 @@ NOTE: THE DEFAULT BEHAVIOR IS TO PERFORM A SEARCH. Only skip search in the very 
 </labels>
 
 <standalone_followup>
-For the standalone follow up, you have to generate a self contained, context independant reformulation of the user's query.
-You basically have to rephrase the user's query in a way that it can be understood without any prior context from the conversation history.
-Say for example the converastion is about cars and the user says "How do they work" then the standalone follow up should be "How do cars work?"
+Generate a self-contained reformulation of the user's latest query that preserves the key subject/entity from the conversation.
+You must resolve ALL pronouns (it, this, that, they, 它, 這個, 那個, etc.) and implicit references back to their concrete nouns from the conversation history.
 
-Do not contain excess information or everything that has been discussed before, just reformulate the user's last query in a self contained manner.
-The standalone follow-up should be concise and to the point.
+Examples:
+- Conversation about "XREAL 1S" → User says "我打算在公司當多一個mon用" → standalone: "使用 XREAL 1S 在公司當作額外的顯示器"
+- Conversation about "Tesla Model 3" → User says "How much is the insurance?" → standalone: "How much is the insurance for a Tesla Model 3?"
+- Conversation about cars → User says "How do they work" → standalone: "How do cars work?"
+
+Rules:
+- ALWAYS include the specific product, topic, or entity being discussed — never drop it.
+- Do NOT add information that was not discussed or implied.
+- Keep it concise but ensure a reader with zero context understands the full intent.
 </standalone_followup>
 
 <output_format>

@@ -106,9 +106,12 @@ class Researcher {
         role: 'user',
         content: `
           <conversation>
-          ${formatChatHistoryAsString(input.chatHistory.slice(-10))}
-           User: ${input.followUp} (Standalone question: ${input.classification.standaloneFollowUp})
+          ${formatChatHistoryAsString(input.chatHistory.slice(-20))}
+           User: ${input.followUp}
+           Contextual rewrite: ${input.classification.standaloneFollowUp}
            </conversation>
+
+           Focus on answering the contextual rewrite. Use the conversation history to understand what the user is referring to.
         `,
       },
     ];

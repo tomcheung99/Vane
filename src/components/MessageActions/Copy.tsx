@@ -1,8 +1,15 @@
 import { Check, ClipboardList } from 'lucide-react';
-import { Message } from '../ChatWindow';
 import { useState } from 'react';
 import { Section } from '@/lib/hooks/useChat';
-import { SourceBlock } from '@/lib/types';
+
+const stripCitations = (message: string) => {
+  return message
+    .replace(/<citation\b[^>]*>[\s\S]*?<\/citation>/gi, '')
+    .replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
 
 const Copy = ({
   section,
@@ -16,24 +23,7 @@ const Copy = ({
   return (
     <button
       onClick={() => {
-        const sources = section.message.responseBlocks.filter(
-          (b) => b.type === 'source' && b.data.length > 0,
-        ) as SourceBlock[];
-
-        const contentToCopy = `${initialMessage}${
-          sources.length > 0
-            ? `\n\nCitations:\n${sources
-                .map((source) => source.data)
-                .flat()
-                .map(
-                  (s, i) =>
-                    `[${i + 1}] ${s.metadata.url.startsWith('file_id://') ? s.metadata.fileName || 'Uploaded File' : s.metadata.url}`,
-                )
-                .join(`\n`)}`
-            : ''
-        }`;
-
-        navigator.clipboard.writeText(contentToCopy);
+        navigator.clipboard.writeText(stripCitations(initialMessage));
 
         setCopied(true);
         setTimeout(() => setCopied(false), 1000);
