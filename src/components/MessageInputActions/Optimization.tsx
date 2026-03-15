@@ -1,4 +1,4 @@
-import { ChevronDown, Sliders, Star, Zap } from 'lucide-react';
+import { ChevronDown, Microscope, Sliders, Star, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Popover,
@@ -31,6 +31,18 @@ const OptimizationModes = [
       <Star
         size={16}
         className="text-[#2196F3] dark:text-[#BBDEFB] fill-[#BBDEFB] dark:fill-[#2196F3]"
+      />
+    ),
+  },
+  {
+    key: 'deep',
+    title: 'Deep Research',
+    description:
+      'Multi-round research with cross-referencing — takes longer but delivers comprehensive, verified reports',
+    icon: (
+      <Microscope
+        size={16}
+        className="text-[#9C27B0] dark:text-[#CE93D8]"
       />
     ),
   },
@@ -72,7 +84,7 @@ const Optimization = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.1, ease: 'easeOut' }}
-                  className="origin-top-left flex flex-col space-y-2 bg-light-primary dark:bg-dark-primary border rounded-lg border-light-200 dark:border-dark-200 w-full p-2 max-h-[200px] md:max-h-none overflow-y-auto"
+                  className="origin-top-left flex flex-col space-y-2 bg-light-primary dark:bg-dark-primary border rounded-lg border-light-200 dark:border-dark-200 w-full p-2 max-h-[280px] md:max-h-none overflow-y-auto"
                 >
                   {OptimizationModes.map((mode, i) => (
                     <PopoverButton
@@ -93,6 +105,11 @@ const Optimization = () => {
                         {mode.key === 'quality' && (
                           <span className="bg-sky-500/70 dark:bg-sky-500/40 border border-sky-600 px-1 rounded-full text-[10px] text-white">
                             Beta
+                          </span>
+                        )}
+                        {mode.key === 'deep' && (
+                          <span className="bg-purple-500/70 dark:bg-purple-500/40 border border-purple-600 px-1 rounded-full text-[10px] text-white">
+                            New
                           </span>
                         )}
                       </div>

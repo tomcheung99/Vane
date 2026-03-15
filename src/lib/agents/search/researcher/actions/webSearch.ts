@@ -56,6 +56,27 @@ You can search for 3 queries in one go, make sure to utilize all 3 queries to ma
 If this tool is present and no other tools are more relevant, you MUST use this tool to get the needed information. You can call this tools, multiple times as needed.
 `;
 
+const deepModePrompt = `
+Use this tool to perform web searches based on the provided queries. You can provide up to 3 queries at a time. This is DEEP RESEARCH mode—you are expected to search aggressively and exhaustively.
+
+CRITICAL RULES FOR DEEP RESEARCH:
+- You MUST call this tool many times (15-30+ rounds) to build comprehensive coverage.
+- Start with broad scoping queries, then progressively narrow into specific sub-topics.
+- Actively search for CONTRADICTING evidence and alternative viewpoints, not just confirmations.
+- Include the current year in some queries to ensure you capture the latest developments.
+- When you find an interesting claim or controversy, immediately search for verification from independent sources.
+- Vary your query strategies: use different keywords, phrasings, and angles to surface diverse results.
+
+QUERY STRATEGY BY PHASE:
+- Phase 1 (Early): Broad overview queries → "topic overview", "topic explained", "topic guide"
+- Phase 2 (Mid): Targeted deep-dives → "topic specific-aspect", "topic vs alternative", "topic expert analysis"
+- Phase 3 (Late): Verification & gaps → "topic controversy", "topic criticism", "topic latest 2025", "topic meta-analysis"
+
+Your queries shouldn't be sentences but rather keywords that are SEO friendly and can be used to search the web for information.
+Always utilize all 3 query slots per call to maximize information gathering. Each query should target a DIFFERENT angle or sub-topic.
+If this tool is present and no other tools are more relevant, you MUST use this tool. Call it as many times as needed—you have a large iteration budget.
+`;
+
 const webSearchAction: ResearchAction<typeof actionSchema> = {
   name: 'web_search',
   schema: actionSchema,
@@ -73,6 +94,9 @@ const webSearchAction: ResearchAction<typeof actionSchema> = {
         break;
       case 'quality':
         prompt = qualityModePrompt;
+        break;
+      case 'deep':
+        prompt = deepModePrompt;
         break;
       default:
         prompt = speedModePrompt;
