@@ -7,9 +7,9 @@ import { WidgetExecutor } from './widgets';
 import db from '@/lib/db';
 import { chats, messages } from '@/lib/db/schema';
 import { and, asc, eq, gt } from 'drizzle-orm';
-import { TextBlock } from '@/lib/types';
+import { TextBlock, MemorySavedBlock } from '@/lib/types';
 import { searchMemoriesWithMetadata } from '@/lib/mcp';
-import { extractAndSaveMemory } from '@/lib/mcp/memoryExtractor';
+import { extractAndSaveMemory, MemoryExtractionResult } from '@/lib/mcp/memoryExtractor';
 
 class SearchAgent {
   async searchAsync(session: SessionManager, input: SearchAgentInput) {
@@ -224,6 +224,42 @@ class SearchAgent {
       }
     }
 
+    // Extract and save memory candidates (with timeout to avoid blocking too long)
+    const fullResponse = session
+      .getAllBlocks()
+      .filter((b): b is TextBlock => b.type === 'text')
+      .map((b) => b.data)
+      .join('\n');
+
+    try {
+      const memoryResult = await Promise.race([
+        extractAndSaveMemory({
+          llm: input.config.llm,
+          userMessage: input.followUp,
+          assistantResponse: fullResponse,
+          chatHistory: input.chatHistory,
+          messageId: input.messageId,
+        }),
+        new Promise<MemoryExtractionResult>((resolve) =>
+          setTimeout(() => resolve({ savedCount: 0, savedFacts: [] }), 5000),
+        ),
+      ]);
+
+      if (memoryResult.savedCount > 0) {
+        const memoryBlock: MemorySavedBlock = {
+          id: crypto.randomUUID(),
+          type: 'memory_saved',
+          data: {
+            savedCount: memoryResult.savedCount,
+            facts: memoryResult.savedFacts,
+          },
+        };
+        session.emitBlock(memoryBlock);
+      }
+    } catch {
+      /* non-critical */
+    }
+
     session.emit('end', {});
 
     await db
@@ -240,21 +276,6 @@ class SearchAgent {
         ),
       )
       .execute();
-
-    // Fire-and-forget: extract and save memory candidates
-    const fullResponse = session
-      .getAllBlocks()
-      .filter((b): b is TextBlock => b.type === 'text')
-      .map((b) => b.data)
-      .join('\n');
-
-    void extractAndSaveMemory({
-      llm: input.config.llm,
-      userMessage: input.followUp,
-      assistantResponse: fullResponse,
-      chatHistory: input.chatHistory,
-      messageId: input.messageId,
-    }).catch(() => {});
   }
 }
 

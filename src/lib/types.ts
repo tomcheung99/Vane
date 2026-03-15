@@ -124,9 +124,19 @@ export type ResearchBlock = {
   };
 };
 
+export type MemorySavedBlock = {
+  id: string;
+  type: 'memory_saved';
+  data: {
+    savedCount: number;
+    facts: string[];
+  };
+};
+
 export type Block =
   | TextBlock
   | SourceBlock
   | SuggestionBlock
   | WidgetBlock
-  | ResearchBlock;
+  | ResearchBlock
+  | MemorySavedBlock;

@@ -288,9 +288,14 @@ function simpleHash(str: string): string {
   return hash.toString(36);
 }
 
+export interface MemoryExtractionResult {
+  savedCount: number;
+  savedFacts: string[];
+}
+
 /**
  * Extract and save memory candidates from a completed conversation turn.
- * Runs async, should not block the main response flow.
+ * Returns info about saved memories for UI display.
  */
 export async function extractAndSaveMemory(params: {
   llm: BaseLLM<any>;
@@ -298,14 +303,16 @@ export async function extractAndSaveMemory(params: {
   assistantResponse: string;
   chatHistory: ChatTurnMessage[];
   messageId: string;
-}): Promise<void> {
+}): Promise<MemoryExtractionResult> {
   const { llm, userMessage, assistantResponse, chatHistory, messageId } =
     params;
 
-  if (!userMessage || userMessage.trim().length < 3) return;
+  const emptyResult: MemoryExtractionResult = { savedCount: 0, savedFacts: [] };
+
+  if (!userMessage || userMessage.trim().length < 3) return emptyResult;
 
   // Dedup: don't process the same message twice
-  if (savedHashes.has(messageId)) return;
+  if (savedHashes.has(messageId)) return emptyResult;
   savedHashes.add(messageId);
 
   // Keep the set from growing unbounded
@@ -337,7 +344,7 @@ export async function extractAndSaveMemory(params: {
     // If LLM returned NONE, rely on heuristic only
     if (llmReturnedNone && heuristicFacts.length === 0) {
       console.log(`[Memory] No facts worth saving for message ${messageId}`);
-      return;
+      return emptyResult;
     }
 
     // Parse LLM facts
@@ -366,10 +373,11 @@ export async function extractAndSaveMemory(params: {
 
     if (allFacts.length === 0) {
       console.log(`[Memory] Extraction returned no valid facts for ${messageId}`);
-      return;
+      return emptyResult;
     }
 
     let savedCount = 0;
+    const savedFacts: string[] = [];
     for (const factObj of allFacts) {
       const hash = simpleHash(factObj.fact.toLowerCase());
       if (savedHashes.has(`fact:${hash}`)) continue;
@@ -397,6 +405,7 @@ export async function extractAndSaveMemory(params: {
       if (saved) {
         savedHashes.add(`fact:${hash}`);
         savedCount++;
+        savedFacts.push(factObj.fact);
         console.log(`[Memory] ${isUpdate ? 'Updated' : 'Saved'}: "${factObj.fact.slice(0, 80)}..."`);
       }
     }
@@ -404,11 +413,14 @@ export async function extractAndSaveMemory(params: {
     console.log(
       `[Memory] Processed message ${messageId}: ${allFacts.length} candidates (${llmFacts.length} LLM + ${heuristicFacts.length} heuristic), ${savedCount} saved`,
     );
+
+    return { savedCount, savedFacts };
   } catch (err) {
     // If LLM fails, still try to save heuristic facts
     if (heuristicFacts.length > 0) {
       console.log(`[Memory] LLM failed, falling back to heuristic facts`);
       let savedCount = 0;
+      const savedFacts: string[] = [];
       for (const factObj of heuristicFacts) {
         const hash = simpleHash(factObj.fact.toLowerCase());
         if (savedHashes.has(`fact:${hash}`)) continue;
@@ -425,6 +437,7 @@ export async function extractAndSaveMemory(params: {
         if (saved) {
           savedHashes.add(`fact:${hash}`);
           savedCount++;
+          savedFacts.push(factObj.fact);
           console.log(`[Memory] Saved fallback: "${factObj.fact.slice(0, 80)}..."`);
         }
       }
@@ -432,8 +445,11 @@ export async function extractAndSaveMemory(params: {
       console.log(
         `[Memory] Fallback for ${messageId}: ${heuristicFacts.length} candidates, ${savedCount} saved`,
       );
+
+      return { savedCount, savedFacts };
     } else {
       console.error('[Memory] Extraction failed (non-critical):', err);
+      return emptyResult;
     }
   }
 }

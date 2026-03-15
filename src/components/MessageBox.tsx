@@ -17,6 +17,7 @@ import {
   PencilLine,
   Check,
   X,
+  BrainCircuit,
 } from 'lucide-react';
 import Markdown, { MarkdownToJSX, RuleType } from 'markdown-to-jsx';
 import Copy from './MessageActions/Copy';
@@ -28,7 +29,7 @@ import ThinkBox from './ThinkBox';
 import { useChat, Section } from '@/lib/hooks/useChat';
 import Citation from './MessageRenderer/Citation';
 import AssistantSteps from './AssistantSteps';
-import { ResearchBlock } from '@/lib/types';
+import { ResearchBlock, MemorySavedBlock } from '@/lib/types';
 import Renderer from './Widgets/Renderer';
 import CodeBlock from './MessageRenderer/CodeBlock';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -78,6 +79,10 @@ const MessageBox = ({
   );
 
   const sources = sourceBlocks.flatMap((block) => block.data);
+
+  const memorySavedBlock = section.message.responseBlocks.find(
+    (block): block is MemorySavedBlock => block.type === 'memory_saved',
+  );
 
   const hasContent = section.parsedTextBlocks.length > 0;
 
@@ -331,7 +336,26 @@ const MessageBox = ({
                   </div>
                 ) : (
                   <div className="flex flex-row items-center justify-between w-full text-black dark:text-white py-4">
-                    <div />
+                    <div>
+                      {memorySavedBlock && !loading && (
+                        <div className="group relative flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                          <BrainCircuit size={14} />
+                          <span>
+                            {memorySavedBlock.data.savedCount} memory{memorySavedBlock.data.savedCount > 1 ? ' items' : ''} saved
+                          </span>
+                          {memorySavedBlock.data.facts.length > 0 && (
+                            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-20 w-72 p-3 rounded-lg bg-light-primary dark:bg-dark-primary border border-light-200 dark:border-dark-200 shadow-lg">
+                              <p className="text-[10px] font-medium text-black/50 dark:text-white/50 uppercase tracking-wider mb-1.5">Saved to memory</p>
+                              {memorySavedBlock.data.facts.map((fact, i) => (
+                                <p key={i} className="text-xs text-black/70 dark:text-white/70 leading-relaxed">
+                                  • {fact}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <div className="flex flex-row items-center -mr-2">
                       <Copy initialMessage={parsedMessage} section={section} />
                       <button
