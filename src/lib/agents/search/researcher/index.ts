@@ -111,6 +111,7 @@ class Researcher {
         i,
         maxIteration,
         input.config.fileIds,
+        input.followUp,
       );
 
       const actionStream = input.config.llm.streamText({

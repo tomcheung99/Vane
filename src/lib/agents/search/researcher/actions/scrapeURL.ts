@@ -11,17 +11,26 @@ const schema = z.object({
 });
 
 const actionDescription = `
-Use this tool to scrape and extract content from the provided URLs. This is useful when you the user has asked you to extract or summarize information from specific web pages. You can provide up to 3 URLs at a time. NEVER CALL THIS TOOL EXPLICITLY YOURSELF UNLESS INSTRUCTED TO DO SO BY THE USER.
-You should only call this tool when the user has specifically requested information from certain web pages, never call this yourself to get extra information without user instruction.
+Use this tool to scrape and extract content from the provided URLs. This is useful when you need to extract information from specific web pages. You can provide up to 3 URLs at a time.
 
-For example, if the user says "Please summarize the content of https://example.com/article", you can call this tool with that URL to get the content and then provide the summary or "What does X mean according to https://example.com/page", you can call this tool with that URL to get the content and provide the explanation.
+You MUST call this tool when:
+1. The user explicitly asks you to read, summarize, or extract from a URL (e.g., "summarize https://example.com/article")
+2. The user's message contains any URL(s) — even if the URL is mentioned as context or reference. If the user shares a URL, they expect you to read its content. Always scrape it first before doing any other research.
+
+For example:
+- "Please summarize the content of https://example.com/article" → scrape the URL
+- "I added https://github.com/user/repo, what skills are available?" → scrape the GitHub URL to find the actual content, then answer based on what you find
+- "Check https://example.com and tell me what you think" → scrape the URL
+- "Based on https://docs.example.com/guide, how do I set this up?" → scrape the URL
+
+Do NOT call this tool to scrape arbitrary URLs from search results unless the user explicitly asked for it.
 `;
 
 const scrapeURLAction: ResearchAction<typeof schema> = {
   name: 'scrape_url',
   schema: schema,
   getToolDescription: () =>
-    'Use this tool to scrape and extract content from the provided URLs. This is useful when you the user has asked you to extract or summarize information from specific web pages. You can provide up to 3 URLs at a time. NEVER CALL THIS TOOL EXPLICITLY YOURSELF UNLESS INSTRUCTED TO DO SO BY THE USER.',
+    'Use this tool to scrape and extract content from the provided URLs. This is useful when you need to extract information from specific web pages. You can provide up to 3 URLs at a time. You MUST call this tool when the user\'s message contains any URL(s).',
   getDescription: () => actionDescription,
   enabled: (_) => true,
   execute: async (params, additionalConfig) => {

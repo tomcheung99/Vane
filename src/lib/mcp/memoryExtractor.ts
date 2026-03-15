@@ -12,6 +12,9 @@ interface InterestPattern {
   factTemplate: (items: string[]) => string;
 }
 
+const STYLE_TERMS_RE =
+  /(?:風格|方式|做法|寫法|說法|口吻|語氣|形式|格式|style|approach|tone|format|way)/i;
+
 const INTEREST_PATTERNS: InterestPattern[] = [
   // === Chinese patterns ===
   // Tools/products being used or obsessed with
@@ -70,6 +73,14 @@ const INTEREST_PATTERNS: InterestPattern[] = [
     tags: ['work', 'tech-stack'],
     factTemplate: (items) => `User uses at work: ${formatList(items)}.`,
   },
+  // Habits / routines
+  {
+    pattern: /(?:我|自己)(?:平常|通常|一般|多半|大多|習慣|習慣會|都會|總是|常常)\s*(.+?)(?:[。！？!?\n]|，|$)/i,
+    category: 'habits',
+    tags: ['habits', 'routine'],
+    factTemplate: (items) =>
+      `User's regular habits or routines include: ${formatList(items)}.`,
+  },
   // === English patterns ===
   // Into/obsessed/using
   {
@@ -99,6 +110,40 @@ const INTEREST_PATTERNS: InterestPattern[] = [
     tags: ['projects', 'current-activity'],
     factTemplate: (items) => `User is currently working on: ${formatList(items)}.`,
   },
+  // Habits / routines
+  {
+    pattern: /(?:i\s+)?(?:usually|normally|typically|often|always|tend to)\s+(.+?)(?:[.?!]|,\s*(?:but|and|because)|$)/i,
+    category: 'habits',
+    tags: ['habits', 'routine'],
+    factTemplate: (items) =>
+      `User's regular habits or routines include: ${formatList(items)}.`,
+  },
+  // === Preference / Style patterns (English) ===
+  {
+    pattern: /(?:i\s+(?:really\s+)?(?:like|love|prefer|enjoy))\s+(?:this|your|the|that)\s+(?:kind of\s+)?(.+?)(?:\s+style|\s+approach|\s+way|\s+format|\s+tone)(?:[.?!,]|$)/i,
+    category: 'preferences',
+    tags: ['communication-preference', 'style'],
+    factTemplate: (items) => `User prefers this style of ${formatList(items)}.`,
+  },
+  {
+    pattern: /(?:i\s+(?:really\s+)?(?:like|love|prefer|enjoy))\s+(?:when you|how you|it when you|the way you)\s+(.+?)(?:[.?!,]|$)/i,
+    category: 'preferences',
+    tags: ['communication-preference', 'style'],
+    factTemplate: (items) => `User prefers when assistant ${formatList(items)}.`,
+  },
+  // === Preference / Style patterns (Chinese) ===
+  {
+    pattern: /(?:我|自己)(?:很|好|超|真的)?(?:喜歡|愛|偏好|欣賞)(?:這種|這個|你的|這樣的|那種)\s*(.+?)(?:風格|方式|做法|寫法|說法|口吻|語氣|形式|格式)(?:[。！？!?\n]|，|$)/i,
+    category: 'preferences',
+    tags: ['communication-preference', 'style'],
+    factTemplate: (items) => `User prefers this style of ${formatList(items)}.`,
+  },
+  {
+    pattern: /(?:我|自己)(?:很|好|超|真的)?(?:喜歡|愛|偏好|欣賞)(?:你)?(?:這樣|這種方式|這麼)\s*(.+?)(?:[。！？!?\n]|，|$)/i,
+    category: 'preferences',
+    tags: ['communication-preference', 'style'],
+    factTemplate: (items) => `User prefers when assistant ${formatList(items)}.`,
+  },
 ];
 
 function normalizeItem(item: string): string {
@@ -119,6 +164,83 @@ function formatList(items: string[]): string {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 }
 
+function inferFactMetadata(fact: string): Omit<HeuristicFact, 'fact'> {
+  const normalized = fact.toLowerCase();
+
+  if (
+    /(?:prefers|likes|dislikes|enjoys|favorite|favourite|style|tone|format|approach)/i.test(
+      normalized,
+    )
+  ) {
+    return {
+      category: 'preferences',
+      tags: ['preferences', 'communication-preference', 'llm-extracted'],
+    };
+  }
+
+  if (
+    /(?:habit|routine|usually|normally|typically|often|always|tend to)/i.test(
+      normalized,
+    )
+  ) {
+    return {
+      category: 'habits',
+      tags: ['habits', 'routine', 'llm-extracted'],
+    };
+  }
+
+  if (
+    /(?:works|working at|at work|job|role|profession|career|student|based in|lives in|from |language|timezone)/i.test(
+      normalized,
+    )
+  ) {
+    return {
+      category: 'profile',
+      tags: ['personal-profile', 'llm-extracted'],
+    };
+  }
+
+  if (/(?:learning|studying|picking up|gett?ing into)/i.test(normalized)) {
+    return {
+      category: 'learning',
+      tags: ['learning', 'current-activity', 'llm-extracted'],
+    };
+  }
+
+  if (/(?:reading|watching|following|binging)/i.test(normalized)) {
+    return {
+      category: 'reading',
+      tags: ['reading', 'current-activity', 'llm-extracted'],
+    };
+  }
+
+  if (/(?:working on|building|developing|creating|project)/i.test(normalized)) {
+    return {
+      category: 'working_on',
+      tags: ['projects', 'current-activity', 'llm-extracted'],
+    };
+  }
+
+  if (/(?:uses|using|tool|stack|framework|app|device)/i.test(normalized)) {
+    return {
+      category: 'tools',
+      tags: ['tools', 'current-interest', 'llm-extracted'],
+    };
+  }
+
+  if (/(?:constraint|cannot|can't|must|needs|requirement|only allows)/i.test(normalized)) {
+    return {
+      category: 'constraints',
+      tags: ['constraints', 'llm-extracted'],
+    };
+  }
+
+  return {
+    category: 'general',
+    tags: ['llm-extracted'],
+  };
+}
+
 interface HeuristicFact {
   fact: string;
   tags: string[];
@@ -134,6 +256,7 @@ function extractHeuristicFacts(userMessage: string): HeuristicFact[] {
     const rawList = match?.[1]?.trim();
     if (!rawList) continue;
     if (seenCategories.has(ip.category)) continue;
+    if (ip.category === 'interests' && STYLE_TERMS_RE.test(rawList)) continue;
 
     const items = rawList
       .split(/(?:,|，|、|\/|\band\b|\betc\b|以及|還有|跟|和|等等)/i)
@@ -179,8 +302,6 @@ export async function extractAndSaveMemory(params: {
   const { llm, userMessage, assistantResponse, chatHistory, messageId } =
     params;
 
-  // Skip if response is too short or empty
-  if (!assistantResponse || assistantResponse.length < 30) return;
   if (!userMessage || userMessage.trim().length < 3) return;
 
   // Dedup: don't process the same message twice
@@ -232,17 +353,16 @@ export async function extractAndSaveMemory(params: {
               !line.startsWith('##') &&
               !line.startsWith('```'),
           )
-          .slice(0, 3)
+          .slice(0, 5)
           .map((fact) => ({
             fact,
-            tags: ['llm-extracted'],
-            category: 'general',
+            ...inferFactMetadata(fact),
           }));
 
     // Merge LLM + heuristic facts, dedup by content
     const allFacts = [...llmFacts, ...heuristicFacts]
       .filter((f, i, all) => all.findIndex((x) => x.fact === f.fact) === i)
-      .slice(0, 4);
+      .slice(0, 6);
 
     if (allFacts.length === 0) {
       console.log(`[Memory] Extraction returned no valid facts for ${messageId}`);

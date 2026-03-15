@@ -323,6 +323,7 @@ export const getResearcherPrompt = (
   i: number,
   maxIteration: number,
   fileIds: string[],
+  followUp?: string,
 ) => {
   let prompt = '';
 
@@ -348,6 +349,13 @@ export const getResearcherPrompt = (
     default:
       prompt = getSpeedPrompt(actionDesc, i, maxIteration, fileDesc);
       break;
+  }
+
+  // Detect URLs in the user's message and inject scrape instruction
+  const urlRegex = /https?:\/\/[^\s)\]>"']+/g;
+  const detectedUrls = followUp?.match(urlRegex);
+  if (detectedUrls && detectedUrls.length > 0) {
+    prompt += `\n\n  <user_provided_urls>\n  IMPORTANT: The user's message contains the following URL(s):\n  ${detectedUrls.map((u) => `- ${u}`).join('\n  ')}\n  You MUST call scrape_url with these URLs as your FIRST action (before any web_search). The user shared these URLs because they want you to read and use their content to answer the question. Do not skip this step.\n  </user_provided_urls>`;
   }
 
   return prompt;
