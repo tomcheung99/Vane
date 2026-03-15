@@ -2,11 +2,11 @@ import { ResearcherOutput, SearchAgentInput } from './types';
 import SessionManager from '@/lib/session';
 import { classify } from './classifier';
 import Researcher from './researcher';
-import { getWriterPrompt } from '@/lib/prompts/search/writer';
+import { getWriterPrompt, buildTrustContext } from '@/lib/prompts/search/writer';
 import { WidgetExecutor } from './widgets';
 import db from '@/lib/db';
 import { chats, messages } from '@/lib/db/schema';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, asc, eq, gt } from 'drizzle-orm';
 import { TextBlock } from '@/lib/types';
 import { searchMemoriesWithMetadata } from '@/lib/mcp';
 import { extractAndSaveMemory } from '@/lib/mcp/memoryExtractor';
@@ -18,6 +18,11 @@ class SearchAgent {
         eq(messages.chatId, input.chatId),
         eq(messages.messageId, input.messageId),
       ),
+    });
+
+    const firstMessage = await db.query.messages.findFirst({
+      where: eq(messages.chatId, input.chatId),
+      orderBy: asc(messages.id),
     });
 
     if (!exists) {
@@ -40,6 +45,7 @@ class SearchAgent {
       await db
         .update(messages)
         .set({
+          query: input.followUp,
           status: 'answering',
           backendId: session.id,
           responseBlocks: [],
@@ -50,6 +56,16 @@ class SearchAgent {
             eq(messages.messageId, input.messageId),
           ),
         )
+        .execute();
+    }
+
+    if (firstMessage?.messageId === input.messageId) {
+      await db
+        .update(chats)
+        .set({
+          title: input.followUp,
+        })
+        .where(eq(chats.id, input.chatId))
         .execute();
     }
 
@@ -150,11 +166,17 @@ class SearchAgent {
       /* non-critical */
     }
 
+    // Build trust-signal context for the writer
+    const trustContext = searchResults?.trustMetadata
+      ? buildTrustContext(searchResults.trustMetadata)
+      : undefined;
+
     const writerPrompt = getWriterPrompt(
       finalContextWithWidgets,
       input.config.systemInstructions,
       input.config.mode,
       memoryContext ?? undefined,
+      trustContext,
     );
     const answerStream = input.config.llm.streamText({
       messages: [

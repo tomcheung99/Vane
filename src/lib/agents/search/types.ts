@@ -4,6 +4,8 @@ import BaseEmbedding from '@/lib/models/base/embedding';
 import SessionManager from '@/lib/session';
 import { ChatTurnMessage, Chunk } from '@/lib/types';
 
+import { TrustSignals } from '@/lib/utils/trustSignals';
+
 export type SearchSources = 'web' | 'discussions' | 'academic';
 
 export type SearchAgentConfig = {
@@ -78,6 +80,7 @@ export type ResearcherInput = {
 export type ResearcherOutput = {
   findings: ActionOutput[];
   searchFindings: Chunk[];
+  trustMetadata: TrustSignals[];
   researchBlockId: string;
 };
 

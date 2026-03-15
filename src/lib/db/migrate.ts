@@ -188,8 +188,73 @@ async function migrateModelProviders() {
   }
 }
 
+async function migrateChatIndexes() {
+  const client = await pool.connect();
+  try {
+    const already = await client.query(
+      "SELECT 1 FROM vane.ran_migrations WHERE name = $1",
+      ['0007']
+    );
+
+    if (already.rowCount && already.rowCount > 0) {
+      console.log('Skipping already-applied migration: 0007_chat_indexes');
+      return;
+    }
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_chatid
+      ON vane.messages("chatId");
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_chatid_messageid
+      ON vane.messages("chatId", "messageId");
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_chatid_id
+      ON vane.messages("chatId", id);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_chats_createdat_id
+      ON vane.chats("createdAt", id);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_chats_title_fts
+      ON vane.chats
+      USING GIN (to_tsvector('simple', title));
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_query_fts
+      ON vane.messages
+      USING GIN (to_tsvector('simple', query));
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_responseblocks_fts
+      ON vane.messages
+      USING GIN (to_tsvector('simple', COALESCE("responseBlocks"::text, '')));
+    `);
+
+    await client.query(
+      "INSERT INTO vane.ran_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING",
+      ['0007']
+    );
+    console.log('Applied migration: 0007_chat_indexes');
+  } catch (err) {
+    console.error('Failed to apply migration 0007_chat_indexes:', err);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 await migrate();
 await migrateMcpServers();
 await migrateWebAuthn();
 await migrateModelProviders();
+await migrateChatIndexes();
 await pool.end();

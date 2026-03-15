@@ -8,6 +8,13 @@ import { ToolCall } from '@/lib/models/types';
 import { getRerankerEnabled } from '@/lib/config/serverRegistry';
 import { getMcpServers } from '@/lib/config/serverRegistry';
 import { RERANKER_MODEL_ID } from '@/lib/reranker';
+import { applyTrustReranking, TrustSignals } from '@/lib/utils/trustSignals';
+import {
+  tokenizeForBm25,
+  buildTermFrequencyMap,
+  InvertedIndex,
+} from '@/lib/utils/bm25';
+import { splitTextFineGrained } from '@/lib/utils/splitText';
 
 class Researcher {
   async research(
@@ -255,17 +262,118 @@ class Researcher {
       })
       .filter((r) => r !== undefined);
 
+    // ── Fine-grained snippet expansion for long chunks ──
+    // Break large web results into ~128-token micro-snippets for
+    // precise citation and inverted-index lookup
+    const expandedResults = filteredSearchResults.flatMap((chunk) => {
+      if (chunk.content.length > 800) {
+        const { snippets } = splitTextFineGrained(chunk.content, 128, 24);
+        if (snippets.length > 1) {
+          return snippets.map((s) => ({
+            content: s.content,
+            metadata: {
+              ...chunk.metadata,
+              snippetIndex: s.snippetIndex,
+              parentChunkIndex: s.parentChunkIndex,
+            },
+          }));
+        }
+      }
+      return [chunk];
+    });
+
+    // ── BM25 inverted-index relevance scoring on aggregated web results ──
+    const queryText = `${input.followUp} ${input.classification.standaloneFollowUp}`;
+    const bm25Reranked = this.bm25Rerank(expandedResults, queryText);
+
+    // ── Apply Trust Factor reranking ──
+    const { results: trustedResults, trustMetadata } = applyTrustReranking(
+      bm25Reranked,
+    );
+
+    // Emit trust signals as a research sub-step for UI visibility
+    const trustBlock = session.getBlock(researchBlockId);
+    if (trustBlock && trustBlock.type === 'research' && trustMetadata.length > 0) {
+      const avgTrust =
+        trustMetadata.reduce((sum, t) => sum + t.trustScore, 0) /
+        trustMetadata.length;
+      const topDomains = [
+        ...new Set(trustMetadata.slice(0, 5).map((t) => t.domain)),
+      ];
+
+      trustBlock.data.subSteps.push({
+        id: crypto.randomUUID(),
+        type: 'tool_usage',
+        tool: 'trust_signals',
+        label: 'Authority & Quality Reranking',
+        description: `Reranked ${trustedResults.length} results by domain authority, content quality, source type & freshness.`,
+        badges: [
+          `avg trust: ${(avgTrust * 100).toFixed(0)}%`,
+          `top: ${topDomains.slice(0, 3).join(', ')}`,
+          `sources: ${trustMetadata.length}`,
+        ],
+      });
+
+      session.updateBlock(researchBlockId, [
+        {
+          op: 'replace',
+          path: '/data/subSteps',
+          value: trustBlock.data.subSteps,
+        },
+      ]);
+    }
+
     session.emitBlock({
       id: crypto.randomUUID(),
       type: 'source',
-      data: filteredSearchResults,
+      data: trustedResults,
     });
 
     return {
       findings: actionOutput,
-      searchFindings: filteredSearchResults,
+      searchFindings: trustedResults,
+      trustMetadata,
       researchBlockId,
     };
+  }
+
+  /**
+   * Re-rank chunks by BM25 score using an inverted index.
+   * Builds an ephemeral index, scores every chunk, and returns
+   * them sorted by descending BM25 relevance.
+   */
+  private bm25Rerank(
+    chunks: { content: string; metadata: Record<string, any> }[],
+    query: string,
+  ) {
+    if (chunks.length <= 1) return chunks;
+
+    const K1 = 1.2;
+    const B = 0.75;
+
+    const docs = chunks.map((c) => {
+      const terms = tokenizeForBm25(c.content);
+      return {
+        termFrequencies: buildTermFrequencyMap(terms),
+        documentLength: terms.length,
+      };
+    });
+
+    const idx = new InvertedIndex();
+    idx.build(docs);
+
+    const queryTerms = new Set(tokenizeForBm25(query));
+    const scores = idx.lookupCandidates(queryTerms, K1, B);
+
+    // Pair each chunk with its BM25 score (0 if no query overlap)
+    const scored = chunks.map((c, i) => ({
+      chunk: c,
+      score: scores.get(i) ?? 0,
+    }));
+
+    scored.sort((a, b) => b.score - a.score);
+
+    return scored.map((s) => s.chunk);
   }
 }
 

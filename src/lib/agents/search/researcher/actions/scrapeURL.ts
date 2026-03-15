@@ -3,6 +3,7 @@ import { ResearchAction } from '../../types';
 import { Chunk, ReadingResearchBlock } from '@/lib/types';
 import TurnDown from 'turndown';
 import path from 'path';
+import { splitTextFineGrained } from '@/lib/utils/splitText';
 
 const turndownService = new TurnDown();
 
@@ -120,13 +121,32 @@ const scrapeURLAction: ResearchAction<typeof schema> = {
 
           const markdown = turndownService.turndown(text);
 
-          results.push({
-            content: markdown,
-            metadata: {
-              url,
-              title: title,
-            },
-          });
+          // Split scraped content into fine-grained snippets for precise retrieval
+          const { snippets } = splitTextFineGrained(markdown, 128, 24);
+
+          if (snippets.length > 0) {
+            // Emit each snippet as a separate chunk for better citation granularity
+            for (const snippet of snippets) {
+              results.push({
+                content: snippet.content,
+                metadata: {
+                  url,
+                  title,
+                  snippetIndex: snippet.snippetIndex,
+                  parentChunkIndex: snippet.parentChunkIndex,
+                  charOffset: snippet.charOffset,
+                },
+              });
+            }
+          } else {
+            results.push({
+              content: markdown,
+              metadata: {
+                url,
+                title,
+              },
+            });
+          }
         } catch (error) {
           results.push({
             content: `Failed to fetch content from ${url}: ${error}`,

@@ -2,7 +2,7 @@ import path from "path";
 import BaseEmbedding from "../models/base/embedding"
 import crypto from "crypto"
 import fs from 'fs';
-import { splitText } from "../utils/splitText";
+import { splitText, splitTextFineGrained, Snippet } from "../utils/splitText";
 import { PDFParse } from 'pdf-parse';
 import { CanvasFactory } from 'pdf-parse/worker';
 import officeParser from 'officeparser'
@@ -86,6 +86,22 @@ class UploadManager {
         }
     }
 
+    /**
+     * Get fine-grained snippets for a file.
+     * Falls back to empty array if snippets were not generated (older uploads).
+     */
+    static getFileSnippets(fileId: string): Snippet[] {
+        try {
+            const recordedFile = this.getFile(fileId);
+            if (!recordedFile) return [];
+
+            const contentData = JSON.parse(fs.readFileSync(recordedFile.contentPath, 'utf-8'));
+            return contentData.snippets ?? [];
+        } catch {
+            return [];
+        }
+    }
+
     private async extractContentAndEmbed(filePath: string, fileType: SupportedMimeType): Promise<string> {
         switch (fileType) {
             case 'text/plain':
@@ -98,6 +114,9 @@ class UploadManager {
                     throw new Error('Embeddings and text chunks length mismatch');
                 }
 
+                // Generate fine-grained snippets for BM25 precision
+                const { snippets: textSnippets } = splitTextFineGrained(content, 128, 24);
+
                 const contentPath = filePath.split('.').slice(0, -1).join('.') + '.content.json';
 
                 const data = {
@@ -106,7 +125,8 @@ class UploadManager {
                             content: text,
                             embedding: embeddings[i],
                         }
-                    })
+                    }),
+                    snippets: textSnippets,
                 }
 
                 fs.writeFileSync(contentPath, JSON.stringify(data, null, 2));
@@ -129,6 +149,8 @@ class UploadManager {
                     throw new Error('Embeddings and text chunks length mismatch');
                 }
 
+                const { snippets: pdfSnippets } = splitTextFineGrained(pdfText, 128, 24);
+
                 const pdfContentPath = filePath.split('.').slice(0, -1).join('.') + '.content.json';
 
                 const pdfData = {
@@ -137,7 +159,8 @@ class UploadManager {
                             content: text,
                             embedding: pdfEmbeddings[i],
                         }
-                    })
+                    }),
+                    snippets: pdfSnippets,
                 }
 
                 fs.writeFileSync(pdfContentPath, JSON.stringify(pdfData, null, 2));
@@ -155,6 +178,8 @@ class UploadManager {
                     throw new Error('Embeddings and text chunks length mismatch');
                 }
 
+                const { snippets: docSnippets } = splitTextFineGrained(docText, 128, 24);
+
                 const docContentPath = filePath.split('.').slice(0, -1).join('.') + '.content.json';
 
                 const docData = {
@@ -163,7 +188,8 @@ class UploadManager {
                             content: text,
                             embedding: docEmbeddings[i],
                         }
-                    })
+                    }),
+                    snippets: docSnippets,
                 }
 
                 fs.writeFileSync(docContentPath, JSON.stringify(docData, null, 2));

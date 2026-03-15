@@ -1,6 +1,6 @@
 import db from '@/lib/db';
 import { chats, messages } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 export const GET = async (
   req: Request,
@@ -19,6 +19,7 @@ export const GET = async (
 
     const chatMessages = await db.query.messages.findMany({
       where: eq(messages.chatId, id),
+      orderBy: asc(messages.id),
     });
 
     return Response.json(

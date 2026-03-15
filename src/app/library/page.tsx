@@ -2,9 +2,18 @@
 
 import DeleteChat from '@/components/DeleteChat';
 import { formatTimeDifference } from '@/lib/utils';
-import { BookOpenText, ClockIcon, FileText, Globe2Icon } from 'lucide-react';
+import {
+  BookOpenText,
+  ClockIcon,
+  FileText,
+  Globe2Icon,
+  LoaderCircle,
+  Search,
+} from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+const PAGE_SIZE = 20;
 
 export interface Chat {
   id: string;
@@ -12,31 +21,114 @@ export interface Chat {
   createdAt: string;
   sources: string[];
   files: { fileId: string; name: string }[];
+  matchPreview?: string | null;
 }
 
 const Page = () => {
   const [chats, setChats] = useState<Chat[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
 
-  useEffect(() => {
-    const fetchChats = async () => {
-      setLoading(true);
+  const fetchChats = useCallback(
+    async ({
+      cursor,
+      query,
+      append,
+    }: {
+      cursor?: string | null;
+      query?: string;
+      append?: boolean;
+    }) => {
+      const activeQuery = query ?? '';
+      const queryParams = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+      });
 
-      const res = await fetch(`/api/chats`, {
+      if (cursor) {
+        queryParams.set('cursor', cursor);
+      }
+
+      if (activeQuery) {
+        queryParams.set('q', activeQuery);
+      }
+
+      const res = await fetch(`/api/chats?${queryParams.toString()}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
+      if (!res.ok) {
+        throw new Error(`Failed to fetch chats: ${res.status}`);
+      }
+
       const data = await res.json();
 
-      setChats(data.chats);
-      setLoading(false);
+      setChats((prev) =>
+        append ? [...prev, ...(data.chats as Chat[])] : (data.chats as Chat[]),
+      );
+      setHasMore(Boolean(data.hasMore));
+      setNextCursor(data.nextCursor ?? null);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearchQuery(searchValue.trim());
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchValue]);
+
+  useEffect(() => {
+    const loadInitialChats = async () => {
+      setLoadingInitial(true);
+
+      try {
+        await fetchChats({
+          query: searchQuery,
+          append: false,
+        });
+      } finally {
+        setLoadingInitial(false);
+      }
     };
 
-    fetchChats();
-  }, []);
+    void loadInitialChats();
+  }, [fetchChats, searchQuery]);
+
+  const handleLoadMore = async () => {
+    if (!hasMore || !nextCursor || loadingMore) {
+      return;
+    }
+
+    setLoadingMore(true);
+
+    try {
+      await fetchChats({
+        cursor: nextCursor,
+        query: searchQuery,
+        append: true,
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const isSearching = searchValue.trim() !== searchQuery;
+  const resultLabel = searchQuery
+    ? `${chats.length} ${chats.length === 1 ? 'result' : 'results'}`
+    : `${chats.length}${hasMore ? '+' : ''} ${
+        chats.length === 1 ? 'chat' : 'chats'
+      }`;
 
   return (
     <div>
@@ -60,15 +152,35 @@ const Page = () => {
           <div className="flex items-center justify-center lg:justify-end gap-2 text-xs text-black/60 dark:text-white/60">
             <span className="inline-flex items-center gap-1 rounded-full border border-black/20 dark:border-white/20 px-2 py-0.5">
               <BookOpenText size={14} />
-              {loading
-                ? 'Loading…'
-                : `${chats.length} ${chats.length === 1 ? 'chat' : 'chats'}`}
+              {loadingInitial ? 'Loading…' : resultLabel}
             </span>
           </div>
         </div>
+
+        <div className="mt-5 max-w-2xl">
+          <label className="relative flex items-center rounded-2xl border border-light-200 dark:border-dark-200 bg-light-primary dark:bg-dark-primary px-4 py-3 shadow-sm shadow-light-200/10 dark:shadow-black/20 focus-within:border-light-300 dark:focus-within:border-dark-300">
+            <Search
+              size={18}
+              className="mr-3 text-black/50 dark:text-white/50"
+            />
+            <input
+              type="search"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              placeholder="Search chats by title, message, or answer content..."
+              className="w-full bg-transparent text-sm text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:outline-none"
+            />
+            {isSearching && (
+              <LoaderCircle
+                size={16}
+                className="ml-3 animate-spin text-black/50 dark:text-white/50"
+              />
+            )}
+          </label>
+        </div>
       </div>
 
-      {loading ? (
+      {loadingInitial ? (
         <div className="flex flex-row items-center justify-center min-h-[60vh]">
           <svg
             aria-hidden="true"
@@ -93,13 +205,19 @@ const Page = () => {
             <BookOpenText className="text-black/70 dark:text-white/70" />
           </div>
           <p className="mt-2 text-black/70 dark:text-white/70 text-sm">
-            No chats found.
+            {searchQuery ? 'No matching chats found.' : 'No chats found.'}
           </p>
           <p className="mt-1 text-black/70 dark:text-white/70 text-sm">
-            <Link href="/" className="text-sky-400">
-              Start a new chat
-            </Link>{' '}
-            to see it listed here.
+            {searchQuery ? (
+              'Try a different keyword or clear the search.'
+            ) : (
+              <>
+                <Link href="/" className="text-sky-400">
+                  Start a new chat
+                </Link>{' '}
+                to see it listed here.
+              </>
+            )}
           </p>
         </div>
       ) : (
@@ -129,13 +247,20 @@ const Page = () => {
                   }
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <Link
-                      href={`/c/${chat.id}`}
-                      className="flex-1 text-black dark:text-white text-base lg:text-lg font-medium leading-snug line-clamp-2 group-hover:text-[#24A0ED] transition duration-200"
-                      title={chat.title}
-                    >
-                      {chat.title}
-                    </Link>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`/c/${chat.id}`}
+                        className="text-black dark:text-white text-base lg:text-lg font-medium leading-snug line-clamp-2 group-hover:text-[#24A0ED] transition duration-200"
+                        title={chat.title}
+                      >
+                        {chat.title}
+                      </Link>
+                      {searchQuery && chat.matchPreview && (
+                        <p className="mt-2 text-sm text-black/65 dark:text-white/65 line-clamp-2">
+                          {chat.matchPreview}
+                        </p>
+                      )}
+                    </div>
                     <div className="pt-0.5 shrink-0">
                       <DeleteChat
                         chatId={chat.id}
@@ -169,6 +294,20 @@ const Page = () => {
               );
             })}
           </div>
+
+          {hasMore && (
+            <div className="flex justify-center pt-6">
+              <button
+                type="button"
+                onClick={() => void handleLoadMore()}
+                disabled={loadingMore}
+                className="inline-flex items-center gap-2 rounded-full border border-light-200 dark:border-dark-200 bg-light-primary dark:bg-dark-primary px-4 py-2 text-sm text-black/70 dark:text-white/70 hover:bg-light-secondary dark:hover:bg-dark-secondary disabled:cursor-not-allowed disabled:opacity-70 transition duration-200"
+              >
+                {loadingMore && <LoaderCircle size={16} className="animate-spin" />}
+                {loadingMore ? 'Loading more...' : 'Load more'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

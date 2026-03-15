@@ -56,6 +56,7 @@ type ChatContext = {
     messageId?: string,
     rewrite?: boolean,
   ) => Promise<void>;
+  editMessage: (messageId: string, message: string) => Promise<void>;
   rewrite: (messageId: string) => void;
   stopGeneration: () => void;
   setChatModelProvider: (provider: ChatModelProvider) => void;
@@ -265,6 +266,7 @@ export const chatContext = createContext<ChatContext>({
   chatModelProvider: { key: '', providerId: '' },
   embeddingModelProvider: { key: '', providerId: '' },
   researchEnded: false,
+  editMessage: async () => {},
   rewrite: () => {},
   stopGeneration: () => {},
   sendMessage: async () => {},
@@ -588,6 +590,38 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     sendMessage(messageToRewrite.query, messageToRewrite.messageId, true);
   };
 
+  const editMessage: ChatContext['editMessage'] = async (
+    messageId,
+    message,
+  ) => {
+    const index = messages.findIndex((msg) => msg.messageId === messageId);
+    const trimmedMessage = message.trim();
+
+    if (loading) {
+      toast.error('Please wait for the current response to finish');
+      return;
+    }
+
+    if (index === -1) {
+      toast.error('Message not found');
+      return;
+    }
+
+    if (!trimmedMessage) {
+      toast.error('Message cannot be empty');
+      return;
+    }
+
+    if (messages[index].query === trimmedMessage) {
+      return;
+    }
+
+    setMessages((prev) => prev.slice(0, index));
+    chatHistory.current = chatHistory.current.slice(0, index * 2);
+
+    await sendMessage(trimmedMessage, messageId, true);
+  };
+
   useEffect(() => {
     if (isReady && initialMessage && isConfigReady) {
       if (!isConfigReady) {
@@ -904,6 +938,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         messageAppeared,
         notFound,
         optimizationMode,
+        editMessage,
         setFileIds,
         setFiles,
         setSources,

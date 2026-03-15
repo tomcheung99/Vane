@@ -3,12 +3,14 @@ import { RerankExecutionMetadata, rerankWithMetadata } from '../reranker';
 import { Chunk } from '../types';
 import { hashObj } from '../serverUtils';
 import computeSimilarity from '../utils/computeSimilarity';
-import { buildTermFrequencyMap, tokenizeForBm25 } from '../utils/bm25';
+import { buildTermFrequencyMap, tokenizeForBm25, InvertedIndex } from '../utils/bm25';
 import UploadManager from './manager';
+import { Snippet } from '../utils/splitText';
 
 const RRF_K = 60;
 const EMBEDDING_RRF_WEIGHT = 1;
 const BM25_RRF_WEIGHT = 1.15;
+const SNIPPET_BM25_RRF_WEIGHT = 0.6;
 const BM25_K1 = 1.2;
 const BM25_B = 0.75;
 
@@ -22,6 +24,15 @@ type StoreRecord = {
   content: string;
   fileId: string;
   metadata: Record<string, any>;
+  documentLength: number;
+  termFrequencies: Map<string, number>;
+};
+
+type SnippetRecord = {
+  content: string;
+  fileId: string;
+  /** Index into this.records of the parent coarse chunk */
+  parentRecordIndex: number;
   documentLength: number;
   termFrequencies: Map<string, number>;
 };
@@ -47,6 +58,9 @@ class UploadStore {
   embeddingModel: BaseEmbedding<any>;
   fileIds: string[];
   records: StoreRecord[] = [];
+  private snippetRecords: SnippetRecord[] = [];
+  private invertedIndex = new InvertedIndex();
+  private snippetInvertedIndex = new InvertedIndex();
   private documentFrequencies: Map<string, number> = new Map();
   private averageDocumentLength = 0;
 
@@ -58,6 +72,7 @@ class UploadStore {
 
   private initializeStore() {
     this.records = [];
+    this.snippetRecords = [];
 
     this.fileIds.forEach((fileId) => {
       const file = UploadManager.getFile(fileId);
@@ -67,6 +82,7 @@ class UploadStore {
       }
 
       const chunks = UploadManager.getFileChunks(fileId);
+      const baseRecordIndex = this.records.length;
 
       this.records.push(
         ...chunks.map((chunk) => {
@@ -85,6 +101,21 @@ class UploadStore {
           };
         }),
       );
+
+      // Load fine-grained snippets if available
+      const snippets = UploadManager.getFileSnippets(fileId);
+      for (const snippet of snippets) {
+        const parentIdx = baseRecordIndex + snippet.parentChunkIndex;
+        if (parentIdx >= this.records.length) continue;
+        const terms = tokenizeForBm25(snippet.content);
+        this.snippetRecords.push({
+          content: snippet.content,
+          fileId,
+          parentRecordIndex: parentIdx,
+          documentLength: terms.length,
+          termFrequencies: buildTermFrequencyMap(terms),
+        });
+      }
     });
 
     this.initializeBm25Stats();
@@ -112,6 +143,24 @@ class UploadStore {
     }
 
     this.averageDocumentLength = totalDocumentLength / this.records.length;
+
+    // Build inverted index for O(posting-len) BM25 lookups
+    this.invertedIndex.build(
+      this.records.map((r) => ({
+        termFrequencies: r.termFrequencies,
+        documentLength: r.documentLength,
+      })),
+    );
+
+    // Build snippet-level inverted index for fine-grained BM25
+    if (this.snippetRecords.length > 0) {
+      this.snippetInvertedIndex.build(
+        this.snippetRecords.map((s) => ({
+          termFrequencies: s.termFrequencies,
+          documentLength: s.documentLength,
+        })),
+      );
+    }
   }
 
   private getChunk(record: StoreRecord): Chunk {
@@ -210,18 +259,26 @@ class UploadStore {
       );
       embeddingLists += 1;
 
+      // Use inverted index for O(posting-len) BM25 scoring
       const bm25QueryTerms = tokenizeForBm25(queries[i]);
-      const bm25Ranked = this.records
-        .map((record) => {
-          const chunk = this.getChunk(record);
-          return {
-            chunk,
-            chunkHash: hashObj(chunk),
-            score: this.computeBm25Score(bm25QueryTerms, record),
-          };
-        })
-        .filter((result) => result.score > 0)
-        .sort((a, b) => b.score - a.score);
+      const bm25Scores = this.invertedIndex.lookupCandidates(
+        new Set(bm25QueryTerms),
+        BM25_K1,
+        BM25_B,
+      );
+
+      const bm25Ranked: RankedChunk[] = [];
+      for (const [recordIndex, score] of bm25Scores) {
+        if (score <= 0) continue;
+        const record = this.records[recordIndex];
+        const chunk = this.getChunk(record);
+        bm25Ranked.push({
+          chunk,
+          chunkHash: hashObj(chunk),
+          score,
+        });
+      }
+      bm25Ranked.sort((a, b) => b.score - a.score);
 
       if (bm25Ranked.length > 0) {
         this.mergeRankedResults(
@@ -231,6 +288,43 @@ class UploadStore {
           scoreMap,
         );
         bm25Lists += 1;
+      }
+
+      // Snippet-level BM25: score fine-grained snippets then propagate
+      // the best snippet score to the parent coarse chunk
+      if (this.snippetRecords.length > 0) {
+        const snippetScores = this.snippetInvertedIndex.lookupCandidates(
+          new Set(bm25QueryTerms),
+          BM25_K1,
+          BM25_B,
+        );
+
+        // Aggregate: for each parent record, take the max snippet score
+        const parentBestScore = new Map<number, number>();
+        for (const [snippetIdx, score] of snippetScores) {
+          if (score <= 0) continue;
+          const parentIdx = this.snippetRecords[snippetIdx].parentRecordIndex;
+          const existing = parentBestScore.get(parentIdx) ?? 0;
+          if (score > existing) parentBestScore.set(parentIdx, score);
+        }
+
+        const snippetRanked: RankedChunk[] = [];
+        for (const [parentIdx, score] of parentBestScore) {
+          const record = this.records[parentIdx];
+          if (!record) continue;
+          const chunk = this.getChunk(record);
+          snippetRanked.push({ chunk, chunkHash: hashObj(chunk), score });
+        }
+        snippetRanked.sort((a, b) => b.score - a.score);
+
+        if (snippetRanked.length > 0) {
+          this.mergeRankedResults(
+            snippetRanked,
+            SNIPPET_BM25_RRF_WEIGHT,
+            chunkMap,
+            scoreMap,
+          );
+        }
       }
     }
 

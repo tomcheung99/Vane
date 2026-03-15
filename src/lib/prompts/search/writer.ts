@@ -1,11 +1,18 @@
+import type { TrustSignals } from '@/lib/utils/trustSignals';
+
 export const getWriterPrompt = (
   context: string,
   systemInstructions: string,
   mode: 'speed' | 'balanced' | 'quality',
   memoryContext?: string,
+  trustContext?: string,
 ) => {
   const memorySection = memoryContext
     ? `\n    ### Memory Context\n    The following is relevant information recalled from the user's memory. Use it to personalize your response when appropriate, but do not cite memory as a source.\n    <memory>\n    ${memoryContext}\n    </memory>\n`
+    : '';
+
+  const trustSection = trustContext
+    ? `\n    ### Source Authority Signals\n    The following trust metadata is attached to the search results. Use it to prioritize citations from high-authority sources when multiple sources support the same claim.\n    <trust_signals>\n    ${trustContext}\n    </trust_signals>\n`
     : '';
 
   return `
@@ -32,6 +39,7 @@ You are Vane, an AI model skilled in web search and crafting detailed, engaging,
     - Ensure that **every sentence in your response includes at least one citation**, even when information is inferred or connected to general knowledge available in the provided context.
     - Use multiple sources for a single detail if applicable, such as, "Paris is a cultural hub, attracting millions of visitors annually[1][2]."
     - Always prioritize credibility and accuracy by linking all statements back to their respective context sources.
+    - **When multiple sources support the same claim, prefer citing the higher-authority source** (academic papers, official documentation, government sites) over lower-authority ones (blogs, forums). Trust metadata is provided in the <trust_signals> section when available.
     - Avoid citing unsupported assumptions or personal interpretations; if no source supports a statement, clearly indicate the limitation.
 
     ### Special Instructions
@@ -54,6 +62,23 @@ You are Vane, an AI model skilled in web search and crafting detailed, engaging,
     ${context}
     </context>
     ${memorySection}
+    ${trustSection}
     Current date & time in ISO format (UTC timezone) is: ${new Date().toISOString()}.
 `;
 };
+
+/**
+ * Build a concise trust-signals summary for the writer prompt.
+ * Shows per-source trust score + domain so the LLM can prioritize
+ * authoritative citations without overwhelming the context window.
+ */
+export function buildTrustContext(trustMetadata: TrustSignals[]): string {
+  if (!trustMetadata || trustMetadata.length === 0) return '';
+
+  return trustMetadata
+    .map(
+      (t, i) =>
+        `[${i + 1}] domain=${t.domain} trust=${(t.trustScore * 100).toFixed(0)}% (authority=${(t.dimensions.domainAuthority * 100).toFixed(0)}%, quality=${(t.dimensions.contentQuality * 100).toFixed(0)}%, type=${(t.dimensions.sourceType * 100).toFixed(0)}%, fresh=${(t.dimensions.freshness * 100).toFixed(0)}%)`,
+    )
+    .join('\n');
+}
