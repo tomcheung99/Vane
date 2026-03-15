@@ -17,11 +17,12 @@ You MUST call this tool when:
 1. The user explicitly asks you to read, summarize, or extract from a URL (e.g., "summarize https://example.com/article")
 2. The user's message contains any URL(s) — even if the URL is mentioned as context or reference. If the user shares a URL, they expect you to read its content. Always scrape it first before doing any other research.
 
+IMPORTANT: Scraping a URL is typically just the FIRST step. After scraping, you should continue researching with web_search to find additional context (e.g., community opinions, reviews, alternatives, related recommendations). Do NOT treat scraping as the complete research — use the scraped content as a foundation and build on it.
+
 For example:
-- "Please summarize the content of https://example.com/article" → scrape the URL
-- "I added https://github.com/user/repo, what skills are available?" → scrape the GitHub URL to find the actual content, then answer based on what you find
-- "Check https://example.com and tell me what you think" → scrape the URL
-- "Based on https://docs.example.com/guide, how do I set this up?" → scrape the URL
+- "I added https://github.com/user/repo, what skills are available?" → scrape the GitHub URL first, then web_search for community opinions, alternatives, and recommendations
+- "Check https://example.com and tell me what you think" → scrape the URL, then web_search for reviews or comparisons
+- "Based on https://docs.example.com/guide, how do I set this up?" → scrape the URL, then web_search for tutorials or troubleshooting tips
 
 Do NOT call this tool to scrape arbitrary URLs from search results unless the user explicitly asked for it.
 `;

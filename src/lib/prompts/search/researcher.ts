@@ -355,7 +355,7 @@ export const getResearcherPrompt = (
   const urlRegex = /https?:\/\/[^\s)\]>"']+/g;
   const detectedUrls = followUp?.match(urlRegex);
   if (detectedUrls && detectedUrls.length > 0) {
-    prompt += `\n\n  <user_provided_urls>\n  IMPORTANT: The user's message contains the following URL(s):\n  ${detectedUrls.map((u) => `- ${u}`).join('\n  ')}\n  You MUST call scrape_url with these URLs as your FIRST action (before any web_search). The user shared these URLs because they want you to read and use their content to answer the question. Do not skip this step.\n  </user_provided_urls>`;
+    prompt += `\n\n  <user_provided_urls>\n  IMPORTANT: The user's message contains the following URL(s):\n  ${detectedUrls.map((u) => `- ${u}`).join('\n  ')}\n  You MUST follow this two-step process:\n  1. FIRST, call scrape_url with these URLs to read their content.\n  2. THEN, continue with web_search to find additional context, community opinions, reviews, alternatives, or related information that enriches your answer. Do NOT call done immediately after scraping — the scraped content is just your starting context, not the complete answer.\n  The user shared these URLs as a reference point. They still expect you to do broader research (e.g., what others think, comparisons, recommendations) using web search AFTER reading the URL content.\n  </user_provided_urls>`;
   }
 
   return prompt;
