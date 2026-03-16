@@ -112,7 +112,9 @@ class APISearchAgent {
       assistantResponse: fullResponse,
       chatHistory: input.chatHistory,
       messageId: input.messageId,
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error('[Memory] extractAndSaveMemory failed:', err);
+    });
   }
 }
 

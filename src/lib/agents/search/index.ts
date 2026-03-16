@@ -241,7 +241,10 @@ class SearchAgent {
           messageId: input.messageId,
         }),
         new Promise<MemoryExtractionResult>((resolve) =>
-          setTimeout(() => resolve({ savedCount: 0, savedFacts: [] }), 5000),
+          setTimeout(() => {
+            console.warn('[Memory] extraction timed out after 15s');
+            resolve({ savedCount: 0, savedFacts: [] });
+          }, 15000),
         ),
       ]);
 
@@ -256,8 +259,8 @@ class SearchAgent {
         };
         session.emitBlock(memoryBlock);
       }
-    } catch {
-      /* non-critical */
+    } catch (err) {
+      console.error('[Memory] extraction failed in SearchAgent:', err);
     }
 
     session.emit('end', {});
