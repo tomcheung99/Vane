@@ -5,7 +5,7 @@ import { ConfigModelProvider } from '@/lib/config/types';
 
 type SaveConfigBody = {
   key: string;
-  value: string;
+  value: unknown;
 };
 
 export const GET = async (req: NextRequest) => {
@@ -69,7 +69,7 @@ export const POST = async (req: NextRequest) => {
   try {
     const body: SaveConfigBody = await req.json();
 
-    if (!body.key || !body.value) {
+    if (!body.key || body.value === undefined) {
       return Response.json(
         {
           message: 'Key and value are required.',
@@ -80,19 +80,42 @@ export const POST = async (req: NextRequest) => {
       );
     }
 
+    let shouldReconnectMcp = false;
+    let reconnected = false;
+    let reconnectError: string | null = null;
+
     // Persist MCP server changes to DB alongside config.json
     if (body.key === 'mcpServers') {
       await configManager.syncMcpServersWithDb(body.value as any);
+      shouldReconnectMcp = true;
     } else if (body.key.startsWith('mcpServers.')) {
       const serverName = body.key.split('.').slice(1).join('.');
       await configManager.setMcpServerWithDb(serverName, body.value as any);
+      shouldReconnectMcp = true;
     } else {
       configManager.updateConfig(body.key, body.value);
     }
 
+    if (shouldReconnectMcp) {
+      try {
+        const { reconnectMcp } = await import('@/lib/mcp');
+        await reconnectMcp();
+        reconnected = true;
+      } catch (err) {
+        reconnectError = err instanceof Error ? err.message : 'Unknown MCP reconnect error';
+        console.error('Failed to reconnect MCP after config update:', err);
+      }
+    }
+
     return Response.json(
       {
-        message: 'Config updated successfully.',
+        message: shouldReconnectMcp
+          ? reconnected
+            ? 'Config updated successfully and MCP reconnected.'
+            : 'Config updated successfully, but MCP reconnect failed.'
+          : 'Config updated successfully.',
+        reconnected,
+        reconnectError,
       },
       {
         status: 200,

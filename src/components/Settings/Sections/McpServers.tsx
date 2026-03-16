@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2, Unplug } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2, Unplug } from 'lucide-react';
 import type { McpTransportType } from '@/lib/config/types';
 
 interface McpServerEntry {
@@ -11,6 +11,12 @@ interface McpServerEntry {
   headers?: Record<string, string>;
   toolTimeout?: number;
 }
+
+type SaveConfigResponse = {
+  message?: string;
+  reconnected?: boolean;
+  reconnectError?: string | null;
+};
 
 const McpSection = ({
   values,
@@ -28,6 +34,11 @@ const McpSection = ({
   const [newAuthHeader, setNewAuthHeader] = useState('');
   const [newTimeout, setNewTimeout] = useState('60');
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editType, setEditType] = useState<McpTransportType>('sse');
+  const [editUrl, setEditUrl] = useState('');
+  const [editAuthHeader, setEditAuthHeader] = useState('');
+  const [editTimeout, setEditTimeout] = useState('60');
 
   const saveServer = async (name: string, entry: McpServerEntry) => {
     setSavingKey(name);
@@ -41,10 +52,16 @@ const McpSection = ({
         }),
       });
 
+      const payload = await res.json().catch(() => ({} as SaveConfigResponse));
+
       if (!res.ok) throw new Error('Failed to save');
 
       setServers((prev) => ({ ...prev, [name]: entry }));
-      toast.success(`MCP server "${name}" saved.`);
+      if (payload.reconnected === false) {
+        toast.warning(`MCP server "${name}" saved, but reconnect failed.`);
+      } else {
+        toast.success(`MCP server "${name}" saved and reconnected.`);
+      }
     } catch {
       toast.error('Failed to save MCP server config.');
     } finally {
@@ -67,10 +84,16 @@ const McpSection = ({
         }),
       });
 
+      const payload = await res.json().catch(() => ({} as SaveConfigResponse));
+
       if (!res.ok) throw new Error('Failed to save');
 
       setServers(updated);
-      toast.success(`MCP server "${name}" removed.`);
+      if (payload.reconnected === false) {
+        toast.warning(`MCP server "${name}" removed, but reconnect failed.`);
+      } else {
+        toast.success(`MCP server "${name}" removed and MCP reloaded.`);
+      }
     } catch {
       toast.error('Failed to remove MCP server.');
     } finally {
@@ -106,6 +129,46 @@ const McpSection = ({
     setAdding(false);
   };
 
+  const startEditing = (name: string, entry: McpServerEntry) => {
+    setAdding(false);
+    setEditingName(name);
+    setEditType(entry.type);
+    setEditUrl(entry.url);
+    setEditAuthHeader(entry.headers?.Authorization || '');
+    setEditTimeout(String(entry.toolTimeout || 60));
+  };
+
+  const cancelEditing = () => {
+    setEditingName(null);
+    setEditType('sse');
+    setEditUrl('');
+    setEditAuthHeader('');
+    setEditTimeout('60');
+  };
+
+  const handleEditSave = async () => {
+    if (!editingName) return;
+
+    const url = editUrl.trim();
+    if (!url) {
+      toast.error('URL is required.');
+      return;
+    }
+
+    const entry: McpServerEntry = {
+      type: editType,
+      url,
+      toolTimeout: parseInt(editTimeout) || 60,
+    };
+
+    if (editAuthHeader.trim()) {
+      entry.headers = { Authorization: editAuthHeader.trim() };
+    }
+
+    await saveServer(editingName, entry);
+    cancelEditing();
+  };
+
   const serverEntries = Object.entries(servers);
 
   return (
@@ -121,41 +184,114 @@ const McpSection = ({
           key={name}
           className="rounded-xl border border-light-200 bg-light-primary/80 p-4 lg:p-6 transition-colors dark:border-dark-200 dark:bg-dark-primary/80"
         >
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
+          {editingName === name ? (
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Unplug size={14} className="text-black/60 dark:text-white/60" />
                 <h4 className="text-sm text-black dark:text-white font-medium">
-                  {name}
+                  Edit {name}
                 </h4>
               </div>
-              <p className="text-[11px] text-black/50 dark:text-white/50 break-all">
-                {entry.url}
-              </p>
-              {entry.headers?.Authorization && (
-                <p className="text-[11px] text-black/40 dark:text-white/40">
-                  Auth: ••••••••
-                </p>
-              )}
               <p className="text-[11px] text-black/40 dark:text-white/40">
-                Transport: {entry.type === 'streamableHttp' ? 'STREAMABLE HTTP' : entry.type.toUpperCase()}
+                Server name is currently fixed. Rename by removing and re-adding if needed.
               </p>
-              <p className="text-[11px] text-black/40 dark:text-white/40">
-                Timeout: {entry.toolTimeout || 30}s
-              </p>
+              <select
+                value={editType}
+                onChange={(e) => setEditType(e.target.value as McpTransportType)}
+                className="w-full rounded-lg border border-light-200 bg-light-secondary px-3 py-2 text-xs text-black dark:border-dark-200 dark:bg-dark-secondary dark:text-white"
+              >
+                <option value="sse">SSE</option>
+                <option value="streamableHttp">Streamable HTTP</option>
+                <option value="http">HTTP (legacy alias)</option>
+              </select>
+              <input
+                type="text"
+                placeholder={editType === 'sse' ? 'SSE URL' : 'Streamable HTTP MCP URL'}
+                value={editUrl}
+                onChange={(e) => setEditUrl(e.target.value)}
+                className="w-full rounded-lg border border-light-200 bg-light-secondary px-3 py-2 text-xs text-black dark:border-dark-200 dark:bg-dark-secondary dark:text-white"
+              />
+              <input
+                type="password"
+                placeholder="Authorization header (optional, e.g. Bearer xxx)"
+                value={editAuthHeader}
+                onChange={(e) => setEditAuthHeader(e.target.value)}
+                className="w-full rounded-lg border border-light-200 bg-light-secondary px-3 py-2 text-xs text-black dark:border-dark-200 dark:bg-dark-secondary dark:text-white"
+              />
+              <input
+                type="number"
+                placeholder="Tool timeout (seconds)"
+                value={editTimeout}
+                onChange={(e) => setEditTimeout(e.target.value)}
+                className="w-full rounded-lg border border-light-200 bg-light-secondary px-3 py-2 text-xs text-black dark:border-dark-200 dark:bg-dark-secondary dark:text-white"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={handleEditSave}
+                  disabled={savingKey !== null}
+                  className="rounded-lg bg-[#24A0ED] px-4 py-1.5 text-xs text-white hover:bg-opacity-85 transition-colors disabled:opacity-50"
+                >
+                  {savingKey === name ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    'Save Changes'
+                  )}
+                </button>
+                <button
+                  onClick={cancelEditing}
+                  disabled={savingKey === name}
+                  className="rounded-lg border border-light-200 px-4 py-1.5 text-xs text-black/60 hover:bg-light-secondary dark:border-dark-200 dark:text-white/60 dark:hover:bg-dark-secondary transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => removeServer(name)}
-              disabled={savingKey === name}
-              className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
-            >
-              {savingKey === name ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Trash2 size={14} />
-              )}
-            </button>
-          </div>
+          ) : (
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Unplug size={14} className="text-black/60 dark:text-white/60" />
+                  <h4 className="text-sm text-black dark:text-white font-medium">
+                    {name}
+                  </h4>
+                </div>
+                <p className="text-[11px] text-black/50 dark:text-white/50 break-all">
+                  {entry.url}
+                </p>
+                {entry.headers?.Authorization && (
+                  <p className="text-[11px] text-black/40 dark:text-white/40">
+                    Auth: ••••••••
+                  </p>
+                )}
+                <p className="text-[11px] text-black/40 dark:text-white/40">
+                  Transport: {entry.type === 'streamableHttp' ? 'STREAMABLE HTTP' : entry.type.toUpperCase()}
+                </p>
+                <p className="text-[11px] text-black/40 dark:text-white/40">
+                  Timeout: {entry.toolTimeout || 30}s
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => startEditing(name, entry)}
+                  disabled={savingKey === name}
+                  className="p-1.5 rounded-lg text-black/50 hover:bg-light-secondary dark:text-white/50 dark:hover:bg-dark-secondary transition-colors"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => removeServer(name)}
+                  disabled={savingKey === name}
+                  className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                >
+                  {savingKey === name ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={14} />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       ))}
 
