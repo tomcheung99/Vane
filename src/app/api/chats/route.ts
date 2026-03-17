@@ -9,6 +9,7 @@ import {
   exists,
   ilike,
   inArray,
+  isNull,
   lt,
   or,
   sql,
@@ -102,9 +103,17 @@ export const GET = async (req: Request) => {
     const limit = parseLimit(url.searchParams.get('limit'));
     const cursor = decodeCursor(url.searchParams.get('cursor'));
     const searchQuery = normalizeSearchQuery(url.searchParams.get('q'));
+    const spaceIdParam = url.searchParams.get('spaceId');
     const likePattern = `%${searchQuery}%`;
 
     const filters = [];
+
+    // Filter by space: "none" = unassigned chats, otherwise filter by spaceId
+    if (spaceIdParam === 'none') {
+      filters.push(isNull(chats.spaceId));
+    } else if (spaceIdParam) {
+      filters.push(eq(chats.spaceId, spaceIdParam));
+    }
 
     if (searchQuery) {
       const messageMatches = exists(
@@ -159,6 +168,7 @@ export const GET = async (req: Request) => {
         id: chats.id,
         title: chats.title,
         createdAt: chats.createdAt,
+        spaceId: chats.spaceId,
         sources: chats.sources,
         files: chats.files,
       })

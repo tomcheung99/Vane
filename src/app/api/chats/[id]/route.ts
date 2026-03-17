@@ -38,6 +38,52 @@ export const GET = async (
   }
 };
 
+export const PATCH = async (
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) => {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+
+    const chatExists = await db.query.chats.findFirst({
+      where: eq(chats.id, id),
+    });
+
+    if (!chatExists) {
+      return Response.json({ message: 'Chat not found' }, { status: 404 });
+    }
+
+    const updates: Record<string, unknown> = {};
+
+    if ('spaceId' in body) {
+      // null means remove from space, string means move to space
+      updates.spaceId = body.spaceId ?? null;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return Response.json(
+        { message: 'No valid fields to update.' },
+        { status: 400 },
+      );
+    }
+
+    const [updated] = await db
+      .update(chats)
+      .set(updates)
+      .where(eq(chats.id, id))
+      .returning();
+
+    return Response.json({ chat: updated }, { status: 200 });
+  } catch (err) {
+    console.error('Error in updating chat: ', err);
+    return Response.json(
+      { message: 'An error has occurred.' },
+      { status: 500 },
+    );
+  }
+};
+
 export const DELETE = async (
   req: Request,
   { params }: { params: Promise<{ id: string }> },

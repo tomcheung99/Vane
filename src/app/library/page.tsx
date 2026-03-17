@@ -1,14 +1,21 @@
 'use client';
 
 import DeleteChat from '@/components/DeleteChat';
+import MoveToSpaceModal from '@/components/MoveToSpaceModal';
+import SpaceFormModal from '@/components/SpaceFormModal';
+import DeleteSpaceModal from '@/components/DeleteSpaceModal';
 import { formatTimeDifference } from '@/lib/utils';
 import {
   BookOpenText,
   ClockIcon,
   FileText,
+  FolderInput,
   Globe2Icon,
   LoaderCircle,
+  Pencil,
+  Plus,
   Search,
+  Trash,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -19,19 +26,56 @@ export interface Chat {
   id: string;
   title: string;
   createdAt: string;
+  spaceId?: string | null;
   sources: string[];
   files: { fileId: string; name: string }[];
   matchPreview?: string | null;
 }
 
+interface Space {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  chatCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const Page = () => {
   const [chats, setChats] = useState<Chat[]>([]);
+  const [spaces, setSpaces] = useState<Space[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
+  const [loadingSpaces, setLoadingSpaces] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+
+  // Space modals
+  const [showCreateSpace, setShowCreateSpace] = useState(false);
+  const [editingSpace, setEditingSpace] = useState<Space | null>(null);
+  const [deletingSpace, setDeletingSpace] = useState<Space | null>(null);
+
+  // Move to space modal
+  const [movingChatId, setMovingChatId] = useState<string | null>(null);
+  const [movingChatSpaceId, setMovingChatSpaceId] = useState<string | null>(null);
+
+  const fetchSpaces = useCallback(async () => {
+    setLoadingSpaces(true);
+    try {
+      const res = await fetch('/api/spaces');
+      if (res.ok) {
+        const data = await res.json();
+        setSpaces(data.spaces);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingSpaces(false);
+    }
+  }, []);
 
   const fetchChats = useCallback(
     async ({
@@ -105,6 +149,10 @@ const Page = () => {
     void loadInitialChats();
   }, [fetchChats, searchQuery]);
 
+  useEffect(() => {
+    void fetchSpaces();
+  }, [fetchSpaces]);
+
   const handleLoadMore = async () => {
     if (!hasMore || !nextCursor || loadingMore) {
       return;
@@ -121,6 +169,11 @@ const Page = () => {
     } finally {
       setLoadingMore(false);
     }
+  };
+
+  const refreshAll = () => {
+    void fetchSpaces();
+    void fetchChats({ query: searchQuery, append: false });
   };
 
   const isSearching = searchValue.trim() !== searchQuery;
@@ -180,6 +233,83 @@ const Page = () => {
         </div>
       </div>
 
+      {/* Spaces Section */}
+      {!loadingSpaces && (spaces.length > 0 || !searchQuery) && (
+        <div className="pt-6 px-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium text-black/70 dark:text-white/70">
+              Spaces
+            </h2>
+            <button
+              onClick={() => setShowCreateSpace(true)}
+              className="inline-flex items-center gap-1.5 text-xs text-black/50 dark:text-white/50 hover:text-black/70 dark:hover:text-white/70 transition duration-200"
+            >
+              <Plus size={14} />
+              New Space
+            </button>
+          </div>
+
+          {spaces.length === 0 ? (
+            <button
+              onClick={() => setShowCreateSpace(true)}
+              className="w-full rounded-2xl border-2 border-dashed border-light-200 dark:border-dark-200 p-6 text-center hover:border-light-300 dark:hover:border-dark-300 transition duration-200 group"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <Plus
+                  size={24}
+                  className="text-black/30 dark:text-white/30 group-hover:text-black/50 dark:group-hover:text-white/50 transition"
+                />
+                <p className="text-sm text-black/50 dark:text-white/50 group-hover:text-black/70 dark:group-hover:text-white/70 transition">
+                  Create your first space to organize related chats
+                </p>
+              </div>
+            </button>
+          ) : (
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {spaces.map((space) => (
+                <Link
+                  key={space.id}
+                  href={`/library/spaces/${space.id}`}
+                  className="group flex-shrink-0 w-48 rounded-2xl border border-light-200 dark:border-dark-200 bg-light-primary dark:bg-dark-primary p-4 hover:bg-light-secondary dark:hover:bg-dark-secondary transition duration-200"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="text-2xl">{space.emoji}</span>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setEditingSpace(space);
+                        }}
+                        className="p-1 rounded-lg hover:bg-light-200 dark:hover:bg-dark-200 text-black/50 dark:text-white/50"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDeletingSpace(space);
+                        }}
+                        className="p-1 rounded-lg hover:bg-light-200 dark:hover:bg-dark-200 text-red-400"
+                      >
+                        <Trash size={13} />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm font-medium text-black dark:text-white line-clamp-1">
+                    {space.name}
+                  </p>
+                  <p className="mt-0.5 text-xs text-black/50 dark:text-white/50">
+                    {space.chatCount} {space.chatCount === 1 ? 'chat' : 'chats'}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {loadingInitial ? (
         <div className="flex flex-row items-center justify-center min-h-[60vh]">
           <svg
@@ -222,6 +352,9 @@ const Page = () => {
         </div>
       ) : (
         <div className="pt-6 pb-28 px-2">
+          <h2 className="text-sm font-medium text-black/70 dark:text-white/70 mb-3">
+            All Chats
+          </h2>
           <div className="rounded-2xl border border-light-200 dark:border-dark-200 overflow-hidden bg-light-primary dark:bg-dark-primary">
             {chats.map((chat, index) => {
               const sourcesLabel =
@@ -235,6 +368,10 @@ const Page = () => {
                         .slice(0, 2)
                         .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
                         .join(', ')} + ${chat.sources.length - 2}`;
+
+              const chatSpace = chat.spaceId
+                ? spaces.find((s) => s.id === chat.spaceId)
+                : null;
 
               return (
                 <div
@@ -261,7 +398,17 @@ const Page = () => {
                         </p>
                       )}
                     </div>
-                    <div className="pt-0.5 shrink-0">
+                    <div className="pt-0.5 shrink-0 flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setMovingChatId(chat.id);
+                          setMovingChatSpaceId(chat.spaceId ?? null);
+                        }}
+                        className="bg-transparent text-black/40 dark:text-white/40 hover:text-[#24A0ED] hover:scale-105 transition duration-200 opacity-0 group-hover:opacity-100"
+                        title="Move to space"
+                      >
+                        <FolderInput size={17} />
+                      </button>
                       <DeleteChat
                         chatId={chat.id}
                         chats={chats}
@@ -275,6 +422,16 @@ const Page = () => {
                       <ClockIcon size={14} />
                       {formatTimeDifference(new Date(), chat.createdAt)} Ago
                     </span>
+
+                    {chatSpace && (
+                      <Link
+                        href={`/library/spaces/${chatSpace.id}`}
+                        className="inline-flex items-center gap-1 text-xs border border-[#24A0ED]/30 text-[#24A0ED] rounded-full px-2 py-0.5 hover:bg-[#24A0ED]/10 transition"
+                      >
+                        <span>{chatSpace.emoji}</span>
+                        {chatSpace.name}
+                      </Link>
+                    )}
 
                     {sourcesLabel && (
                       <span className="inline-flex items-center gap-1 text-xs border border-black/20 dark:border-white/20 rounded-full px-2 py-0.5">
@@ -309,6 +466,45 @@ const Page = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Modals */}
+      <SpaceFormModal
+        open={showCreateSpace}
+        onClose={() => setShowCreateSpace(false)}
+        onSaved={refreshAll}
+      />
+
+      {editingSpace && (
+        <SpaceFormModal
+          open={true}
+          onClose={() => setEditingSpace(null)}
+          onSaved={refreshAll}
+          initialData={editingSpace}
+        />
+      )}
+
+      {deletingSpace && (
+        <DeleteSpaceModal
+          open={true}
+          spaceId={deletingSpace.id}
+          spaceName={deletingSpace.name}
+          onClose={() => setDeletingSpace(null)}
+          onDeleted={refreshAll}
+        />
+      )}
+
+      {movingChatId && (
+        <MoveToSpaceModal
+          open={true}
+          chatId={movingChatId}
+          currentSpaceId={movingChatSpaceId}
+          onClose={() => {
+            setMovingChatId(null);
+            setMovingChatSpaceId(null);
+          }}
+          onMoved={refreshAll}
+        />
       )}
     </div>
   );

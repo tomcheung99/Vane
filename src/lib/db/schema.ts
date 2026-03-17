@@ -4,6 +4,36 @@ import { Block } from '../types';
 import { SearchSources } from '../agents/search/types';
 import type { Model } from '../models/types';
 
+export const spaces = pgTable(
+  'spaces',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description').default(''),
+    emoji: text('emoji').default('📁'),
+    createdAt: text('createdAt').notNull(),
+    updatedAt: text('updatedAt').notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index('idx_spaces_createdat').on(table.createdAt),
+  }),
+);
+
+export const spaceNotes = pgTable(
+  'space_notes',
+  {
+    id: text('id').primaryKey(),
+    spaceId: text('spaceId')
+      .notNull()
+      .references(() => spaces.id, { onDelete: 'cascade' }),
+    content: text('content').default(''),
+    updatedAt: text('updatedAt').notNull(),
+  },
+  (table) => ({
+    spaceIdIdx: index('idx_space_notes_spaceid').on(table.spaceId),
+  }),
+);
+
 export const messages = pgTable(
   'messages',
   {
@@ -41,6 +71,7 @@ export const chats = pgTable(
     id: text('id').primaryKey(),
     title: text('title').notNull(),
     createdAt: text('createdAt').notNull(),
+    spaceId: text('spaceId').references(() => spaces.id, { onDelete: 'set null' }),
     sources: jsonb('sources')
       .$type<SearchSources[]>()
       .default(sql`'[]'::jsonb`),
@@ -50,6 +81,7 @@ export const chats = pgTable(
   },
   (table) => ({
     createdAtIdIdx: index('idx_chats_createdat_id').on(table.createdAt, table.id),
+    spaceIdIdx: index('idx_chats_spaceid').on(table.spaceId),
   }),
 );
 

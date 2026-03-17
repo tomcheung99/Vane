@@ -252,9 +252,77 @@ async function migrateChatIndexes() {
   }
 }
 
+async function migrateSpaces() {
+  const client = await pool.connect();
+  try {
+    const already = await client.query(
+      "SELECT 1 FROM vane.ran_migrations WHERE name = $1",
+      ['0008']
+    );
+
+    if (already.rowCount && already.rowCount > 0) {
+      console.log('Skipping already-applied migration: 0008_spaces');
+      return;
+    }
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vane.spaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        emoji TEXT DEFAULT '📁',
+        "createdAt" TEXT NOT NULL,
+        "updatedAt" TEXT NOT NULL
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_spaces_createdat
+      ON vane.spaces("createdAt");
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vane.space_notes (
+        id TEXT PRIMARY KEY,
+        "spaceId" TEXT NOT NULL REFERENCES vane.spaces(id) ON DELETE CASCADE,
+        content TEXT DEFAULT '',
+        "updatedAt" TEXT NOT NULL
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_space_notes_spaceid
+      ON vane.space_notes("spaceId");
+    `);
+
+    await client.query(`
+      ALTER TABLE vane.chats
+      ADD COLUMN IF NOT EXISTS "spaceId" TEXT
+      REFERENCES vane.spaces(id) ON DELETE SET NULL;
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_chats_spaceid
+      ON vane.chats("spaceId");
+    `);
+
+    await client.query(
+      "INSERT INTO vane.ran_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING",
+      ['0008']
+    );
+    console.log('Applied migration: 0008_spaces');
+  } catch (err) {
+    console.error('Failed to apply migration 0008_spaces:', err);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 await migrate();
 await migrateMcpServers();
 await migrateWebAuthn();
 await migrateModelProviders();
 await migrateChatIndexes();
+await migrateSpaces();
 await pool.end();
