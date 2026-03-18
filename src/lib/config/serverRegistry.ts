@@ -14,6 +14,9 @@ export const getConfiguredModelProviderById = (
 export const getSearxngURL = () =>
   configManager.getConfig('search.searxngURL', '');
 
+export const getGluetunAPIURL = () =>
+  configManager.getConfig('search.gluetunAPIURL', '');
+
 export const getMcpServers = (): Record<string, McpServerEntry> =>
   configManager.getMcpServers();
 

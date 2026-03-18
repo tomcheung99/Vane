@@ -34,6 +34,7 @@ class ConfigManager {
     modelProviders: [],
     search: {
       searxngURL: '',
+      gluetunAPIURL: '',
     },
     mcpServers: {},
   };
@@ -153,6 +154,17 @@ class ConfigManager {
         default: '',
         scope: 'server',
         env: 'SEARXNG_API_URL',
+      },
+      {
+        name: 'Gluetun API URL',
+        key: 'gluetunAPIURL',
+        type: 'string',
+        required: false,
+        description: 'Gluetun VPN control API URL. When set, SearXNG searches will auto-rotate VPN IP on blocked requests.',
+        placeholder: 'http://gluetun:8000',
+        default: '',
+        scope: 'server',
+        env: 'GLUETUN_API_URL',
       },
     ],
   };
