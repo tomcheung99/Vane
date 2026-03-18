@@ -11,6 +11,7 @@ on:
 jobs:
   build-amd64:
     runs-on: ubuntu-latest
+    if: github.repository == 'ItzCrazyKns/Vane'
     strategy:
       matrix:
         variant:
@@ -79,6 +80,7 @@ jobs:
 
   build-arm64:
     runs-on: ubuntu-24.04-arm
+    if: github.repository == 'ItzCrazyKns/Vane'
     strategy:
       matrix:
         variant:
@@ -148,6 +150,7 @@ jobs:
   manifest:
     needs: [build-amd64, build-arm64]
     runs-on: ubuntu-latest
+    if: github.repository == 'ItzCrazyKns/Vane'
     strategy:
       matrix:
         variant: [full, slim]
