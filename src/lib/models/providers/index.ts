@@ -9,6 +9,7 @@ import LemonadeProvider from './lemonade';
 import AnthropicProvider from './anthropic';
 import LMStudioProvider from './lmstudio';
 import VercelAIProvider from './vercelai';
+import FlagEmbeddingProvider from './flagembedding';
 
 export const providers: Record<string, ProviderConstructor<any>> = {
   openai: OpenAIProvider,
@@ -20,6 +21,7 @@ export const providers: Record<string, ProviderConstructor<any>> = {
   anthropic: AnthropicProvider,
   lmstudio: LMStudioProvider,
   vercelai: VercelAIProvider,
+  flagembedding: FlagEmbeddingProvider,
 };
 
 export const getModelProvidersUIConfigSection =

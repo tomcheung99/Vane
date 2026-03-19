@@ -11,7 +11,13 @@ export const getMemoryExtractionPrompt = (
   return `You are a memory extraction system. Your job is to identify USER-SPECIFIC facts that are worth remembering for future conversations. You must ONLY extract facts that the user explicitly stated, confirmed, or clearly implied about themselves. Be AGGRESSIVE about saving user preferences, habits, personal context, and stable background information. Prefer extracting a useful user memory over returning NONE.
 
 ## What to extract (HIGH PRIORITY — always extract these)
+- What the user is currently researching, exploring, or investigating (e.g., specific technologies, frameworks, topics, or ideas). Treat ANY mention of "researching", "studying", "looking into", or "playing with" as a high-priority fact.
 - Preferences, likes, dislikes, favorites, tastes, and choices the user expressed
+- Frustrations, avoidances, pain points, and things the user actively dislikes or wants to avoid (e.g., "I hate configuring Webpack", "I avoid subscription software").
+- The user's skill level, expertise, and operational familiarity with tools/languages (e.g., "I'm a beginner at Python", "I have 10 years of Java experience").
+- Future intentions, bucket lists, and planned tasks (e.g., "I plan to learn Go next month", "I intend to buy a new Mac").
+- Specific hardware, OS architecture, and local development environment details (e.g., "I use an M4 Mac", "I use Neovim").
+- Tooling philosophy, budget constraints, and general decision-making rules (e.g., "I prefer self-hosted open-source software", "I prefer buy-once tools").
 - Communication preferences: explanation style, tone, level of detail, structure, formatting, brevity vs. depth, examples vs. formulas, etc.
 - Personal habits, routines, recurring behaviors, workflows, and "how I usually do things" statements
 - The user's current tools, apps, frameworks, devices, products, services, and tech stack
@@ -53,6 +59,13 @@ export const getMemoryExtractionPrompt = (
   - Example: "我喜歡這種說明風格" → Extract: "User prefers detailed, step-by-step explanations."
   - Example: "I usually compare specs before I buy anything" → Extract: "User usually compares specs before making purchases."
   - Example: "我習慣先看數學推導，再看直覺例子" → Extract: "User prefers to look at mathematical derivations before intuitive examples."
+  - Example: "我最近在研究怎麼部署docker" → Extract: "User is currently researching how to deploy Docker."
+  - Example: "一直在看Rust的設計模式" → Extract: "User is currently researching and exploring Rust design patterns."
+  - Example: "我超討厭設定 Webpack，每次都雷到" → Extract: "User considers configuring Webpack a major pain point and prefers to avoid it."
+  - Example: "我是 Python 新手能看懂嗎？" → Extract: "User is a beginner at Python."
+  - Example: "下個月打算開始學 Go" → Extract: "User plans to start learning Go next month."
+  - Example: "我都用 Neovim 寫扣在 M4 Mac 上" → Extract: "User uses Neovim for coding on an M4 Mac."
+  - Example: "我盡量選免費開源自己架的" → Extract: "User prefers self-hosted, open-source software over proprietary alternatives."
 - If NOTHING user-specific worth remembering was said, return exactly: NONE
 - Return at most 5 facts per conversation turn.
 - Do NOT wrap output in markdown code blocks.

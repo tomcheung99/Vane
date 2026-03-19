@@ -25,3 +25,12 @@ export const getRerankerEnabled = (): boolean =>
 
 export const getRerankerTopN = (): number =>
   parseInt(configManager.getConfig('preferences.rerankerTopN', '100'), 10);
+
+export const getRetrievalApiUrl = (): string =>
+  configManager.getConfig('preferences.retrievalApiUrl', '');
+
+export const getRetrievalApiKey = (): string =>
+  configManager.getConfig('preferences.retrievalApiKey', '');
+
+export const getColbertEnabled = (): boolean =>
+  configManager.getConfig('preferences.colbertEnabled', false);
