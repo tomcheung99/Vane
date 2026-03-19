@@ -35,10 +35,16 @@ class FlagEmbedding extends BaseEmbedding<FlagEmbeddingConfig> {
         throw new Error(`FlagEmbedding API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json() as { dense: number[][] };
-      if (data.dense) {
-        allDense.push(...data.dense);
+      const data = await response.json() as Record<string, unknown>;
+      const embeddings = data.dense ?? data.embeddings ?? data.embedding;
+
+      if (!embeddings || !Array.isArray(embeddings)) {
+        throw new Error(
+          `FlagEmbedding API returned unexpected format. Keys: ${Object.keys(data).join(', ')}`,
+        );
       }
+
+      allDense.push(...(embeddings as number[][]));
     }
 
     return allDense;
