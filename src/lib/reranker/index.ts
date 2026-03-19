@@ -46,54 +46,30 @@ function getRemoteHeaders(): Record<string, string> {
   return headers;
 }
 
-async function colbertPreFilter<T extends { content: string }>(
-  query: string,
-  candidates: T[],
-): Promise<T[]> {
-  const apiUrl = getRetrievalApiUrl();
-  const candidateTexts = candidates.map((c) => c.content);
-
-  const response = await fetch(`${apiUrl}/v1/colbert`, {
-    method: 'POST',
-    headers: getRemoteHeaders(),
-    body: JSON.stringify({ query, candidates: candidateTexts }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`ColBERT API error: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json() as {
-    reranked_docs: { doc_id: number; score: number }[];
-  };
-
-  return data.reranked_docs
-    .filter((r) => r.doc_id < candidates.length)
-    .sort((a, b) => b.score - a.score)
-    .map((r) => candidates[r.doc_id]);
-}
-
-async function rerankViaRemoteApi<T extends { content: string }>(
+async function rerankViaSearchPipeline<T extends { content: string }>(
   query: string,
   candidates: T[],
   topK: number,
   rerankTopN: number,
 ): Promise<{ results: T[]; metadata: RerankExecutionMetadata }> {
   const apiUrl = getRetrievalApiUrl();
+  const useColbert = getColbertEnabled();
 
-  let toRerank = candidates.slice(0, rerankTopN);
-
-  // Optional ColBERT pre-filtering step
-  if (getColbertEnabled()) {
-    toRerank = await colbertPreFilter(query, toRerank);
-  }
-
-  const documents = toRerank.map((c) => c.content);
+  const toRerank = candidates.slice(0, rerankTopN);
+  const documents = toRerank.map((c, i) => ({
+    id: String(i),
+    content: c.content,
+  }));
 
   const response = await fetch(`${apiUrl}/v1/rerank`, {
     method: 'POST',
     headers: getRemoteHeaders(),
-    body: JSON.stringify({ query, documents }),
+    body: JSON.stringify({
+      query,
+      documents,
+      rerank_top_k: topK,
+      two_stage: useColbert,
+    }),
   });
 
   if (!response.ok) {
@@ -205,7 +181,7 @@ export async function rerankWithMetadata<T extends { content: string }>(
   }
 
   if (remoteApiUrl) {
-    return rerankViaRemoteApi(query, candidates, topK, rerankTopN);
+    return rerankViaSearchPipeline(query, candidates, topK, rerankTopN);
   }
 
   return rerankViaLocalModel(query, candidates, topK, rerankTopN);

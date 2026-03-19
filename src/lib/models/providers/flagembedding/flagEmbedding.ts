@@ -19,24 +19,19 @@ class FlagEmbedding extends BaseEmbedding<FlagEmbeddingConfig> {
     return headers;
   }
 
-  private async embedSingle(text: string): Promise<number[]> {
+  async embedText(texts: string[]): Promise<number[][]> {
     const response = await fetch(`${this.config.apiUrl}/v1/embed`, {
       method: 'POST',
       headers: this.getHeaders(),
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text: texts }),
     });
 
     if (!response.ok) {
       throw new Error(`FlagEmbedding API error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json() as { dense: number[]; sparse: Record<string, number> };
+    const data = await response.json() as { dense: number[][] };
     return data.dense;
-  }
-
-  async embedText(texts: string[]): Promise<number[][]> {
-    const results = await Promise.all(texts.map((t) => this.embedSingle(t)));
-    return results;
   }
 
   async embedChunks(chunks: Chunk[]): Promise<number[][]> {
