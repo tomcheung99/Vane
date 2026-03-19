@@ -71,16 +71,7 @@ class FlagEmbeddingProvider extends BaseModelProvider<FlagEmbeddingConfig> {
     throw new Error('FlagEmbedding Provider does not support chat models.');
   }
 
-  async loadEmbeddingModel(key: string): Promise<BaseEmbedding<any>> {
-    const modelList = await this.getModelList();
-    const exists = modelList.embedding.find((m) => m.key === key);
-
-    if (!exists) {
-      throw new Error(
-        'Error Loading FlagEmbedding Model. Invalid Model Selected.',
-      );
-    }
-
+  async loadEmbeddingModel(_key: string): Promise<BaseEmbedding<any>> {
     return new FlagEmbedding({
       apiUrl: this.config.apiUrl,
       apiKey: this.config.apiKey || undefined,

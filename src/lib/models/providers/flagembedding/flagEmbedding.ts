@@ -28,7 +28,7 @@ class FlagEmbedding extends BaseEmbedding<FlagEmbeddingConfig> {
       const response = await fetch(`${this.config.apiUrl}/v1/embed`, {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ text: batch }),
+        body: JSON.stringify({ text: batch, priority: 5 }),
       });
 
       if (!response.ok) {
