@@ -22,9 +22,10 @@ export async function POST(req: Request) {
       files: processedFiles,
     });
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error uploading file:', error instanceof Error ? error.message : error);
+    console.error('Stack:', error instanceof Error ? error.stack : '');
     return NextResponse.json(
-      { message: 'An error has occurred.' },
+      { message: error instanceof Error ? error.message : 'An error has occurred.' },
       { status: 500 },
     );
   }

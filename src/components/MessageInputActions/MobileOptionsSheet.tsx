@@ -100,6 +100,12 @@ const MobileOptionsSheet = ({ isOpen, onClose }: MobileOptionsSheetProps) => {
     try {
       const res = await fetch('/api/uploads', { method: 'POST', body: data });
       const resData = await res.json();
+
+      if (!res.ok || !resData.files) {
+        console.error('Upload failed:', resData.message || res.statusText);
+        return;
+      }
+
       setFiles([...files, ...resData.files]);
       setFileIds([
         ...fileIds,

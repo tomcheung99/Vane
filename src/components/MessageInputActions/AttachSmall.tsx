@@ -24,16 +24,27 @@ const AttachSmall = () => {
       data.append('files', e.target.files![i]);
     }
 
-    const res = await fetch(`/api/uploads`, {
-      method: 'POST',
-      body: data,
-    });
+    try {
+      const res = await fetch(`/api/uploads`, {
+        method: 'POST',
+        body: data,
+      });
 
-    const resData = await res.json();
+      const resData = await res.json();
 
-    setFiles([...files, ...resData.files]);
-    setFileIds([...fileIds, ...resData.files.map((file: any) => file.fileId)]);
-    setLoading(false);
+      if (!res.ok || !resData.files) {
+        console.error('Upload failed:', resData.message || res.statusText);
+        setLoading(false);
+        return;
+      }
+
+      setFiles([...files, ...resData.files]);
+      setFileIds([...fileIds, ...resData.files.map((file: any) => file.fileId)]);
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return loading ? (
