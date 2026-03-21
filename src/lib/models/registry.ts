@@ -120,9 +120,13 @@ class ModelRegistry {
       try {
         const models = await p.provider.getModelList();
         if (models.embedding.length > 0) {
-          return await p.provider.loadEmbeddingModel(models.embedding[0].key);
+          const model = await p.provider.loadEmbeddingModel(models.embedding[0].key);
+          // Verify the model can actually embed (catches onnxruntime-node missing, etc.)
+          await model.embedText(['test']);
+          return model;
         }
-      } catch {
+      } catch (err) {
+        console.warn(`Skipping embedding provider ${p.name} (${p.type}):`, err);
         continue;
       }
     }

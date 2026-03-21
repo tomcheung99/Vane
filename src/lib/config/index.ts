@@ -558,7 +558,7 @@ class ConfigManager {
 
   /** Load model providers from DB into in-memory config (DB is source of truth). */
   public async loadModelProvidersFromDb(): Promise<void> {
-    const { getAllModelProviders } = await import('../db/modelProviders');
+    const { getAllModelProviders, upsertModelProvider } = await import('../db/modelProviders');
     const { syncAllModelProvidersToDb } = await import('../db/modelProviders');
     const providers = await getAllModelProviders();
     if (providers.length > 0) {
@@ -566,6 +566,19 @@ class ConfigManager {
         ...provider,
         config: sanitizeProviderConfig(provider.config),
       }));
+
+      // Sync any new providers from config.json that aren't in DB yet
+      const dbIds = new Set(sanitizedProviders.map((p) => p.id));
+      for (const cfgProvider of this.currentConfig.modelProviders) {
+        if (!dbIds.has(cfgProvider.id)) {
+          const sanitized = {
+            ...cfgProvider,
+            config: sanitizeProviderConfig(cfgProvider.config),
+          };
+          sanitizedProviders.push(sanitized);
+          await upsertModelProvider(sanitized);
+        }
+      }
 
       this.currentConfig.modelProviders = sanitizedProviders;
 

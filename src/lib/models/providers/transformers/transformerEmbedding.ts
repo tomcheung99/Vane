@@ -1,6 +1,6 @@
 import { Chunk } from '@/lib/types';
 import BaseEmbedding from '../../base/embedding';
-import { FeatureExtractionPipeline } from '@huggingface/transformers';
+import type { FeatureExtractionPipeline } from '@huggingface/transformers';
 
 type TransformerConfig = {
   model: string;
