@@ -33,14 +33,6 @@ const Attach = () => {
       data.append('files', e.target.files![i]);
     }
 
-    const embeddingModelProvider = localStorage.getItem(
-      'embeddingModelProviderId',
-    );
-    const embeddingModel = localStorage.getItem('embeddingModelKey');
-
-    data.append('embedding_model_provider_id', embeddingModelProvider!);
-    data.append('embedding_model_key', embeddingModel!);
-
     const res = await fetch(`/api/uploads`, {
       method: 'POST',
       body: data,

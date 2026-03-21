@@ -29,12 +29,6 @@ const Models = ({
           )}
           type="chat"
         />
-        <ModelSelect
-          providers={providers.filter((p) =>
-            p.embeddingModels.some((m) => m.key != 'error'),
-          )}
-          type="embedding"
-        />
       </div>
       <div className="border-t border-light-200 dark:border-dark-200" />
       <div className="flex flex-row justify-between items-center px-6 ">

@@ -9,7 +9,6 @@ interface ChatRequestBody {
   optimizationMode: 'speed' | 'balanced' | 'quality' | 'deep';
   sources: SearchSources[];
   chatModel: ModelWithProvider;
-  embeddingModel: ModelWithProvider;
   query: string;
   history: Array<[string, string]>;
   stream?: boolean;
@@ -38,10 +37,7 @@ export const POST = async (req: Request) => {
 
     const [llm, embeddings] = await Promise.all([
       registry.loadChatModel(body.chatModel.providerId, body.chatModel.key),
-      registry.loadEmbeddingModel(
-        body.embeddingModel.providerId,
-        body.embeddingModel.key,
-      ),
+      registry.loadDefaultEmbeddingModel(),
     ]);
 
     const history: ChatTurnMessage[] = body.history.map((msg) => {

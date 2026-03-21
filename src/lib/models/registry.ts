@@ -106,6 +106,23 @@ class ModelRegistry {
     return model;
   }
 
+  async loadDefaultEmbeddingModel() {
+    await this.ensureInitialized();
+
+    for (const p of this.activeProviders) {
+      try {
+        const models = await p.provider.getModelList();
+        if (models.embedding.length > 0) {
+          return await p.provider.loadEmbeddingModel(models.embedding[0].key);
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    throw new Error('No embedding model available. Please configure one in Settings.');
+  }
+
   async addProvider(
     type: string,
     name: string,

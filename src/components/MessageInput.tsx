@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import AttachSmall from './MessageInputActions/AttachSmall';
 import ModelSelector from './MessageInputActions/ChatModelSelector';
-import EmbeddingModelSelector from './MessageInputActions/EmbeddingModelSelector';
 import Sources from './MessageInputActions/Sources';
 import MobileOptionsSheet from './MessageInputActions/MobileOptionsSheet';
 import { useChat } from '@/lib/hooks/useChat';
@@ -84,7 +83,6 @@ const MessageInput = () => {
           <div className="hidden sm:flex flex-row items-center space-x-0.5">
             <Sources />
             <ModelSelector />
-            <EmbeddingModelSelector />
             <AttachSmall />
           </div>
         </>
@@ -122,7 +120,6 @@ const MessageInput = () => {
             <div className="hidden sm:flex flex-row items-center space-x-0.5">
               <Sources />
               <ModelSelector />
-              <EmbeddingModelSelector />
               <AttachSmall />
             </div>
           </>

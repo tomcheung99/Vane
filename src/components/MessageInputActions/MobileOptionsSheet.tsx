@@ -2,7 +2,6 @@
 
 import { Dialog, DialogPanel, Switch } from '@headlessui/react';
 import {
-  Blocks,
   Cpu,
   GlobeIcon,
   Loader2,
@@ -54,14 +53,12 @@ const MobileOptionsSheet = ({ isOpen, onClose }: MobileOptionsSheetProps) => {
     fileIds,
     setChatModelProvider,
     chatModelProvider,
-    setEmbeddingModelProvider,
-    embeddingModelProvider,
   } = useChat();
 
   const [providers, setProviders] = useState<MinimalProvider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    'main' | 'chatModel' | 'embeddingModel'
+    'main' | 'chatModel'
   >('main');
   const [searchQuery, setSearchQuery] = useState('');
   const [fileLoading, setFileLoading] = useState(false);
@@ -100,14 +97,6 @@ const MobileOptionsSheet = ({ isOpen, onClose }: MobileOptionsSheetProps) => {
       data.append('files', e.target.files[i]);
     }
 
-    const embeddingModelProviderId = localStorage.getItem(
-      'embeddingModelProviderId',
-    );
-    const embeddingModelKey = localStorage.getItem('embeddingModelKey');
-
-    data.append('embedding_model_provider_id', embeddingModelProviderId!);
-    data.append('embedding_model_key', embeddingModelKey!);
-
     try {
       const res = await fetch('/api/uploads', { method: 'POST', body: data });
       const resData = await res.json();
@@ -130,16 +119,6 @@ const MobileOptionsSheet = ({ isOpen, onClose }: MobileOptionsSheetProps) => {
     setActiveTab('main');
   };
 
-  const handleEmbeddingModelSelect = (
-    providerId: string,
-    modelKey: string,
-  ) => {
-    setEmbeddingModelProvider({ providerId, key: modelKey });
-    localStorage.setItem('embeddingModelProviderId', providerId);
-    localStorage.setItem('embeddingModelKey', modelKey);
-    setActiveTab('main');
-  };
-
   const filteredChatProviders = useMemo(() => {
     return providers
       .map((provider) => ({
@@ -153,19 +132,6 @@ const MobileOptionsSheet = ({ isOpen, onClose }: MobileOptionsSheetProps) => {
       .filter((provider) => provider.chatModels.length > 0);
   }, [providers, searchQuery]);
 
-  const filteredEmbeddingProviders = useMemo(() => {
-    return providers
-      .map((provider) => ({
-        ...provider,
-        embeddingModels: provider.embeddingModels.filter(
-          (model) =>
-            model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            provider.name.toLowerCase().includes(searchQuery.toLowerCase()),
-        ),
-      }))
-      .filter((provider) => provider.embeddingModels.length > 0);
-  }, [providers, searchQuery]);
-
   const currentChatModelName = useMemo(() => {
     if (!chatModelProvider?.providerId) return 'Select Model';
     const provider = providers.find(
@@ -176,17 +142,6 @@ const MobileOptionsSheet = ({ isOpen, onClose }: MobileOptionsSheetProps) => {
     );
     return model?.name ?? 'Select Model';
   }, [providers, chatModelProvider]);
-
-  const currentEmbeddingModelName = useMemo(() => {
-    if (!embeddingModelProvider?.providerId) return 'Select Model';
-    const provider = providers.find(
-      (p) => p.id === embeddingModelProvider.providerId,
-    );
-    const model = provider?.embeddingModels.find(
-      (m) => m.key === embeddingModelProvider.key,
-    );
-    return model?.name ?? 'Select Model';
-  }, [providers, embeddingModelProvider]);
 
   return (
     <AnimatePresence>
@@ -217,9 +172,7 @@ const MobileOptionsSheet = ({ isOpen, onClose }: MobileOptionsSheetProps) => {
                 <h2 className="text-lg font-semibold text-black dark:text-white">
                   {activeTab === 'main'
                     ? 'Options'
-                    : activeTab === 'chatModel'
-                      ? 'Chat Model'
-                      : 'Embedding Model'}
+                    : 'Chat Model'}
                 </h2>
                 <button
                   onClick={
@@ -341,27 +294,6 @@ const MobileOptionsSheet = ({ isOpen, onClose }: MobileOptionsSheetProps) => {
                     </div>
                     <ChevronRight className="text-black/30 dark:text-white/30 shrink-0" />
                   </button>
-
-                  {/* Embedding Model */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('embeddingModel');
-                      setSearchQuery('');
-                    }}
-                    className="flex items-center w-full p-3.5 rounded-xl bg-light-secondary dark:bg-dark-secondary border border-light-200 dark:border-dark-200 mb-3 active:scale-[0.98] transition"
-                  >
-                    <Blocks size={18} className="text-emerald-500 shrink-0" />
-                    <div className="flex flex-col items-start ml-3 min-w-0 flex-1">
-                      <span className="text-sm font-medium text-black dark:text-white">
-                        Embedding Model
-                      </span>
-                      <span className="text-xs text-black/50 dark:text-white/50 truncate w-full text-left">
-                        {currentEmbeddingModelName}
-                      </span>
-                    </div>
-                    <ChevronRight className="text-black/30 dark:text-white/30 shrink-0" />
-                  </button>
                 </div>
               )}
 
@@ -438,97 +370,6 @@ const MobileOptionsSheet = ({ isOpen, onClose }: MobileOptionsSheetProps) => {
                                       provider.id &&
                                       chatModelProvider?.key === model.key
                                       ? 'text-sky-500 font-medium'
-                                      : 'text-black/70 dark:text-white/70',
-                                  )}
-                                >
-                                  {model.name}
-                                </p>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Embedding Model selector view */}
-              {activeTab === 'embeddingModel' && (
-                <div className="flex-1 overflow-hidden flex flex-col">
-                  <div className="px-5 pb-3">
-                    <div className="relative">
-                      <Search
-                        size={16}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Search embedding models..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2.5 bg-light-secondary dark:bg-dark-secondary rounded-xl text-sm text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:outline-none border border-light-200 dark:border-dark-200"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto px-5 pb-8">
-                    {isLoading ? (
-                      <div className="flex items-center justify-center py-16">
-                        <Loader2
-                          className="animate-spin text-black/40 dark:text-white/40"
-                          size={24}
-                        />
-                      </div>
-                    ) : filteredEmbeddingProviders.length === 0 ? (
-                      <div className="text-center py-16 text-black/60 dark:text-white/60 text-sm">
-                        {searchQuery
-                          ? 'No models found'
-                          : 'No embedding models configured'}
-                      </div>
-                    ) : (
-                      filteredEmbeddingProviders.map((provider) => (
-                        <div key={provider.id} className="mb-3">
-                          <p className="text-xs text-black/50 dark:text-white/50 uppercase tracking-wider px-1 py-2">
-                            {provider.name}
-                          </p>
-                          <div className="flex flex-col space-y-1">
-                            {provider.embeddingModels.map((model) => (
-                              <button
-                                key={model.key}
-                                type="button"
-                                onClick={() =>
-                                  handleEmbeddingModelSelect(
-                                    provider.id,
-                                    model.key,
-                                  )
-                                }
-                                className={cn(
-                                  'px-3 py-3 flex items-center rounded-xl transition active:scale-[0.98]',
-                                  embeddingModelProvider?.providerId ===
-                                    provider.id &&
-                                    embeddingModelProvider?.key === model.key
-                                    ? 'bg-emerald-500/10 border border-emerald-500/30'
-                                    : 'bg-light-secondary dark:bg-dark-secondary border border-transparent',
-                                )}
-                              >
-                                <Blocks
-                                  size={15}
-                                  className={cn(
-                                    'shrink-0',
-                                    embeddingModelProvider?.providerId ===
-                                      provider.id &&
-                                      embeddingModelProvider?.key === model.key
-                                      ? 'text-emerald-500'
-                                      : 'text-black/50 dark:text-white/50',
-                                  )}
-                                />
-                                <p
-                                  className={cn(
-                                    'text-sm ml-2.5 truncate',
-                                    embeddingModelProvider?.providerId ===
-                                      provider.id &&
-                                      embeddingModelProvider?.key === model.key
-                                      ? 'text-emerald-500 font-medium'
                                       : 'text-black/70 dark:text-white/70',
                                   )}
                                 >

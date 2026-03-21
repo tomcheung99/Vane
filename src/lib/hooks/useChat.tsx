@@ -44,7 +44,6 @@ type ChatContext = {
   isReady: boolean;
   hasError: boolean;
   chatModelProvider: ChatModelProvider;
-  embeddingModelProvider: EmbeddingModelProvider;
   researchEnded: boolean;
   setResearchEnded: (ended: boolean) => void;
   setOptimizationMode: (mode: string) => void;
@@ -60,7 +59,6 @@ type ChatContext = {
   rewrite: (messageId: string) => void;
   stopGeneration: () => void;
   setChatModelProvider: (provider: ChatModelProvider) => void;
-  setEmbeddingModelProvider: (provider: EmbeddingModelProvider) => void;
 };
 
 export interface File {
@@ -79,24 +77,14 @@ const deprecatedChatModelMappings: Record<string, string> = {
     'google/gemini-3.1-flash-lite-preview',
 };
 
-interface EmbeddingModelProvider {
-  key: string;
-  providerId: string;
-}
-
 const checkConfig = async (
   setChatModelProvider: (provider: ChatModelProvider) => void,
-  setEmbeddingModelProvider: (provider: EmbeddingModelProvider) => void,
   setIsConfigReady: (ready: boolean) => void,
   setHasError: (hasError: boolean) => void,
 ) => {
   try {
     let chatModelKey = localStorage.getItem('chatModelKey');
     let chatModelProviderId = localStorage.getItem('chatModelProviderId');
-    let embeddingModelKey = localStorage.getItem('embeddingModelKey');
-    let embeddingModelProviderId = localStorage.getItem(
-      'embeddingModelProviderId',
-    );
 
     const res = await fetch(`/api/providers`, {
       headers: {
@@ -139,37 +127,12 @@ const checkConfig = async (
       chatModelProvider.chatModels[0];
     chatModelKey = chatModel.key;
 
-    const embeddingModelProvider =
-      providers.find((p) => p.id === embeddingModelProviderId) ??
-      providers.find((p) => p.embeddingModels.length > 0);
-
-    if (!embeddingModelProvider) {
-      throw new Error(
-        'No embedding models found, pleae configure them in the settings page.',
-      );
-    }
-
-    embeddingModelProviderId = embeddingModelProvider.id;
-
-    const embeddingModel =
-      embeddingModelProvider.embeddingModels.find(
-        (m) => m.key === embeddingModelKey,
-      ) ?? embeddingModelProvider.embeddingModels[0];
-    embeddingModelKey = embeddingModel.key;
-
     localStorage.setItem('chatModelKey', chatModelKey);
     localStorage.setItem('chatModelProviderId', chatModelProviderId);
-    localStorage.setItem('embeddingModelKey', embeddingModelKey);
-    localStorage.setItem('embeddingModelProviderId', embeddingModelProviderId);
 
     setChatModelProvider({
       key: chatModelKey,
       providerId: chatModelProviderId,
-    });
-
-    setEmbeddingModelProvider({
-      key: embeddingModelKey,
-      providerId: embeddingModelProviderId,
     });
 
     setIsConfigReady(true);
@@ -264,7 +227,6 @@ export const chatContext = createContext<ChatContext>({
   notFound: false,
   optimizationMode: '',
   chatModelProvider: { key: '', providerId: '' },
-  embeddingModelProvider: { key: '', providerId: '' },
   researchEnded: false,
   editMessage: async () => {},
   rewrite: () => {},
@@ -275,7 +237,6 @@ export const chatContext = createContext<ChatContext>({
   setSources: () => {},
   setOptimizationMode: () => {},
   setChatModelProvider: () => {},
-  setEmbeddingModelProvider: () => {},
   setResearchEnded: () => {},
 });
 
@@ -312,12 +273,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       providerId: '',
     },
   );
-
-  const [embeddingModelProvider, setEmbeddingModelProvider] =
-    useState<EmbeddingModelProvider>({
-      key: '',
-      providerId: '',
-    });
 
   const [isConfigReady, setIsConfigReady] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -517,7 +472,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     checkConfig(
       setChatModelProvider,
-      setEmbeddingModelProvider,
       setIsConfigReady,
       setHasError,
     );
@@ -862,10 +816,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
             key: chatModelProvider.key,
             providerId: chatModelProvider.providerId,
           },
-          embeddingModel: {
-            key: embeddingModelProvider.key,
-            providerId: embeddingModelProvider.providerId,
-          },
           systemInstructions: localStorage.getItem('systemInstructions'),
         }),
       });
@@ -948,8 +898,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         sendMessage,
         setChatModelProvider,
         chatModelProvider,
-        embeddingModelProvider,
-        setEmbeddingModelProvider,
         researchEnded,
         setResearchEnded,
       }}

@@ -7,15 +7,11 @@ const PORT = parseInt(process.env.PORT ?? "8940");
 const PERPLEXICA_URL = process.env.PERPLEXICA_URL ?? "http://localhost:3000";
 const PERPLEXICA_CHAT_PROVIDER = process.env.PERPLEXICA_CHAT_PROVIDER ?? "";
 const PERPLEXICA_CHAT_MODEL = process.env.PERPLEXICA_CHAT_MODEL ?? "";
-const PERPLEXICA_EMBED_PROVIDER = process.env.PERPLEXICA_EMBED_PROVIDER ?? "";
-const PERPLEXICA_EMBED_MODEL = process.env.PERPLEXICA_EMBED_MODEL ?? "";
 
 // Validate required env vars at startup — fail fast with a clear message
 const missingEnv: string[] = [];
 if (!PERPLEXICA_CHAT_PROVIDER) missingEnv.push("PERPLEXICA_CHAT_PROVIDER");
 if (!PERPLEXICA_CHAT_MODEL) missingEnv.push("PERPLEXICA_CHAT_MODEL");
-if (!PERPLEXICA_EMBED_PROVIDER) missingEnv.push("PERPLEXICA_EMBED_PROVIDER");
-if (!PERPLEXICA_EMBED_MODEL) missingEnv.push("PERPLEXICA_EMBED_MODEL");
 
 if (missingEnv.length > 0) {
   console.error(
@@ -42,10 +38,6 @@ async function perplexicaSearch(
     chatModel: {
       providerId: PERPLEXICA_CHAT_PROVIDER,
       key: PERPLEXICA_CHAT_MODEL,
-    },
-    embeddingModel: {
-      providerId: PERPLEXICA_EMBED_PROVIDER,
-      key: PERPLEXICA_EMBED_MODEL,
     },
     sources,
     query,

@@ -7,19 +7,10 @@ export async function POST(req: Request) {
     const formData = await req.formData();
 
     const files = formData.getAll('files') as File[];
-    const embeddingModel = formData.get('embedding_model_key') as string;
-    const embeddingModelProvider = formData.get('embedding_model_provider_id') as string;
-
-    if (!embeddingModel || !embeddingModelProvider) {
-      return NextResponse.json(
-        { message: 'Missing embedding model or provider' },
-        { status: 400 },
-      );
-    }
 
     const registry = new ModelRegistry();
 
-    const model = await registry.loadEmbeddingModel(embeddingModelProvider, embeddingModel);
+    const model = await registry.loadDefaultEmbeddingModel();
     
     const uploadManager = new UploadManager({
       embeddingModel: model,

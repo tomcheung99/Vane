@@ -6,7 +6,6 @@ import Optimization from './MessageInputActions/Optimization';
 import Attach from './MessageInputActions/Attach';
 import { useChat } from '@/lib/hooks/useChat';
 import ModelSelector from './MessageInputActions/ChatModelSelector';
-import EmbeddingModelSelector from './MessageInputActions/EmbeddingModelSelector';
 import MobileOptionsSheet from './MessageInputActions/MobileOptionsSheet';
 
 const EmptyChatMessageInput = () => {
@@ -82,7 +81,6 @@ const EmptyChatMessageInput = () => {
             <div className="hidden sm:flex flex-row items-center space-x-1">
               <Sources />
               <ModelSelector />
-              <EmbeddingModelSelector />
               <Attach />
             </div>
             <button

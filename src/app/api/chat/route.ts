@@ -24,13 +24,6 @@ const chatModelSchema: z.ZodType<ModelWithProvider> = z.object({
   key: z.string({ message: 'Chat model key must be provided' }),
 });
 
-const embeddingModelSchema: z.ZodType<ModelWithProvider> = z.object({
-  providerId: z.string({
-    message: 'Embedding model provider id must be provided',
-  }),
-  key: z.string({ message: 'Embedding model key must be provided' }),
-});
-
 const bodySchema = z.object({
   message: messageSchema,
   optimizationMode: z.enum(['speed', 'balanced', 'quality', 'deep'], {
@@ -43,7 +36,6 @@ const bodySchema = z.object({
     .default([]),
   files: z.array(z.string()).optional().default([]),
   chatModel: chatModelSchema,
-  embeddingModel: embeddingModelSchema,
   systemInstructions: z.string().nullable().optional().default(''),
 });
 
@@ -129,10 +121,7 @@ export const POST = async (req: Request) => {
 
     const [llm, embedding] = await Promise.all([
       registry.loadChatModel(body.chatModel.providerId, body.chatModel.key),
-      registry.loadEmbeddingModel(
-        body.embeddingModel.providerId,
-        body.embeddingModel.key,
-      ),
+      registry.loadDefaultEmbeddingModel(),
     ]);
 
     const history: ChatTurnMessage[] = body.history.map((msg) => {
