@@ -109,7 +109,14 @@ class ModelRegistry {
   async loadDefaultEmbeddingModel() {
     await this.ensureInitialized();
 
-    for (const p of this.activeProviders) {
+    // Prefer API-based providers over local transformers to avoid onnxruntime dependency
+    const sortedProviders = [...this.activeProviders].sort((a, b) => {
+      if (a.type === 'transformers' && b.type !== 'transformers') return 1;
+      if (a.type !== 'transformers' && b.type === 'transformers') return -1;
+      return 0;
+    });
+
+    for (const p of sortedProviders) {
       try {
         const models = await p.provider.getModelList();
         if (models.embedding.length > 0) {
