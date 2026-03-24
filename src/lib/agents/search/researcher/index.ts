@@ -7,7 +7,9 @@ import formatChatHistoryAsString from '@/lib/utils/formatHistory';
 import { ToolCall } from '@/lib/models/types';
 import { getRerankerEnabled } from '@/lib/config/serverRegistry';
 import { getMcpServers } from '@/lib/config/serverRegistry';
-import { RERANKER_MODEL_ID } from '@/lib/reranker';
+import { rerankWithMetadata, RERANKER_MODEL_ID } from '@/lib/reranker';
+import computeSimilarity from '@/lib/utils/computeSimilarity';
+import { hashObj } from '@/lib/serverUtils';
 import { applyTrustReranking, TrustSignals } from '@/lib/utils/trustSignals';
 import {
   tokenizeForBm25,
@@ -287,13 +289,79 @@ class Researcher {
       return [chunk];
     });
 
-    // ── BM25 inverted-index relevance scoring on aggregated web results ──
+    // ── Hybrid Retrieval: BM25 + Embedding similarity, fused with RRF ──
     const queryText = `${input.followUp} ${input.classification.standaloneFollowUp}`;
-    const bm25Reranked = this.bm25Rerank(expandedResults, queryText);
+    const queries = [input.followUp, input.classification.standaloneFollowUp].filter(Boolean);
+
+    const hybridRanked = await this.hybridRrf(expandedResults, queries, input.config.embedding);
+
+    // Emit hybrid retrieval sub-step for UI visibility
+    const hybridBlock = session.getBlock(researchBlockId);
+    if (hybridBlock && hybridBlock.type === 'research') {
+      hybridBlock.data.subSteps.push({
+        id: crypto.randomUUID(),
+        type: 'tool_usage',
+        tool: 'hybrid_retrieval',
+        label: 'Hybrid Retrieval (Web)',
+        description: 'Combined BM25 keyword ranking and embedding semantic similarity with Reciprocal Rank Fusion.',
+        badges: [
+          `queries: ${queries.length}`,
+          `chunks: ${expandedResults.length}`,
+          `rrfK: 60`,
+        ],
+      });
+      session.updateBlock(researchBlockId, [
+        { op: 'replace', path: '/data/subSteps', value: hybridBlock.data.subSteps },
+      ]);
+    }
+
+    // ── Neural Reranker (same model used for uploads) ──
+    let rerankedResults: typeof expandedResults;
+    let rerankerMetadata: import('@/lib/reranker').RerankExecutionMetadata | undefined;
+    try {
+      const topK = Math.min(hybridRanked.length, 20);
+      // Feed 2× topK candidates to the reranker so it has enough context to
+      // pick the best topK, matching the same pattern used in UploadStore.query().
+      const RERANKER_CANDIDATE_MULTIPLIER = 2;
+      const { results: reranked, metadata } = await rerankWithMetadata(
+        queryText,
+        hybridRanked.slice(0, topK * RERANKER_CANDIDATE_MULTIPLIER),
+        topK,
+      );
+      rerankedResults = reranked;
+      rerankerMetadata = metadata;
+    } catch (err) {
+      console.warn('[WebSearch] Reranker failed, using hybrid RRF order:', err);
+      rerankedResults = hybridRanked.slice(0, 20);
+    }
+
+    // Emit reranker sub-step for UI visibility
+    if (rerankerMetadata) {
+      const rerankerBlock = session.getBlock(researchBlockId);
+      if (rerankerBlock && rerankerBlock.type === 'research') {
+        rerankerBlock.data.subSteps.push({
+          id: crypto.randomUUID(),
+          type: 'tool_usage',
+          tool: 'reranker',
+          label: rerankerMetadata.applied ? 'Neural Reranker (Web)' : 'Reranker unavailable, using hybrid RRF order',
+          description: rerankerMetadata.applied
+            ? `${rerankerMetadata.modelId} reranked ${rerankerMetadata.inputCount} web candidates → kept ${rerankerMetadata.outputCount}.`
+            : 'Reranker skipped; hybrid RRF order used.',
+          badges: [
+            `model: ${rerankerMetadata.modelId.split('/').pop()}`,
+            `in: ${rerankerMetadata.inputCount}`,
+            `out: ${rerankerMetadata.outputCount}`,
+          ],
+        });
+        session.updateBlock(researchBlockId, [
+          { op: 'replace', path: '/data/subSteps', value: rerankerBlock.data.subSteps },
+        ]);
+      }
+    }
 
     // ── Apply Trust Factor reranking ──
     const { results: trustedResults, trustMetadata } = applyTrustReranking(
-      bm25Reranked,
+      rerankedResults,
     );
 
     // Emit trust signals as a research sub-step for UI visibility
@@ -379,6 +447,74 @@ class Researcher {
     scored.sort((a, b) => b.score - a.score);
 
     return scored.map((s) => s.chunk);
+  }
+
+  /**
+   * Hybrid Retrieval using Reciprocal Rank Fusion (RRF) of:
+   *   1. Embedding cosine-similarity rank list
+   *   2. BM25 rank list (reusing the existing bm25Rerank logic)
+   *
+   * Identical strategy to UploadStore.query() but operates on ephemeral
+   * in-memory web-search chunks — no persistent vector store needed.
+   */
+  private async hybridRrf(
+    chunks: { content: string; metadata: Record<string, any> }[],
+    queries: string[],
+    embeddingModel: import('@/lib/models/base/embedding').default,
+  ): Promise<{ content: string; metadata: Record<string, any> }[]> {
+    if (chunks.length <= 1) return chunks;
+
+    const RRF_K = 60;
+    // Embedding and BM25 weights for RRF fusion. BM25 is weighted slightly
+    // higher (1.15) to give keyword matching a modest preference over semantic
+    // similarity, matching the same tuning used in UploadStore.query().
+    const EMBEDDING_WEIGHT = 1.0;
+    const BM25_WEIGHT = 1.15;
+
+    const chunkMap = new Map<string, { content: string; metadata: Record<string, any> }>();
+    const scoreMap = new Map<string, number>();
+
+    // Embed all queries at once
+    const queryEmbeddings = await embeddingModel.embedQuery(queries);
+
+    // Embed all chunks at once (batch)
+    const chunkEmbeddings = await embeddingModel.embedText(
+      chunks.map((c) => c.content),
+    );
+
+    for (let qi = 0; qi < queryEmbeddings.length; qi++) {
+      const queryEmb = queryEmbeddings[qi];
+      const query = queries[qi];
+
+      // ── Embedding rank list ──
+      const embeddingRanked = chunks
+        .map((chunk, ci) => ({
+          chunk,
+          hash: hashObj(chunk),
+          score: computeSimilarity(queryEmb, chunkEmbeddings[ci]),
+        }))
+        .sort((a, b) => b.score - a.score);
+
+      for (let rank = 0; rank < embeddingRanked.length; rank++) {
+        const { chunk, hash } = embeddingRanked[rank];
+        chunkMap.set(hash, chunk);
+        scoreMap.set(hash, (scoreMap.get(hash) ?? 0) + EMBEDDING_WEIGHT / (rank + 1 + RRF_K));
+      }
+
+      // ── BM25 rank list ──
+      const bm25Ranked = this.bm25Rerank(chunks, query);
+      for (let rank = 0; rank < bm25Ranked.length; rank++) {
+        const chunk = bm25Ranked[rank];
+        const hash = hashObj(chunk);
+        chunkMap.set(hash, chunk);
+        scoreMap.set(hash, (scoreMap.get(hash) ?? 0) + BM25_WEIGHT / (rank + 1 + RRF_K));
+      }
+    }
+
+    return Array.from(scoreMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([hash]) => chunkMap.get(hash))
+      .filter((chunk): chunk is NonNullable<typeof chunk> => chunk !== undefined);
   }
 }
 
