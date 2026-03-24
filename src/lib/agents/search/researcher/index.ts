@@ -17,6 +17,7 @@ import {
   InvertedIndex,
 } from '@/lib/utils/bm25';
 import { splitTextFineGrained } from '@/lib/utils/splitText';
+import BaseEmbedding from '@/lib/models/base/embedding';
 
 class Researcher {
   async research(
@@ -460,7 +461,7 @@ class Researcher {
   private async hybridRrf(
     chunks: { content: string; metadata: Record<string, any> }[],
     queries: string[],
-    embeddingModel: import('@/lib/models/base/embedding').default,
+    embeddingModel: BaseEmbedding<any>,
   ): Promise<{ content: string; metadata: Record<string, any> }[]> {
     if (chunks.length <= 1) return chunks;
 
