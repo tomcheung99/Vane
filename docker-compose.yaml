@@ -12,6 +12,9 @@ services:
     depends_on:
       - searxng
     restart: unless-stopped
+    networks:
+      - default
+      - coolify
 
   searxng:
     build:
@@ -24,3 +27,7 @@ services:
 volumes:
   data:
     name: 'vane-data'
+
+networks:
+  coolify:
+    external: true
