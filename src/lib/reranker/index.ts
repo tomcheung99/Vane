@@ -181,8 +181,10 @@ export async function rerankWithMetadata<T extends { content: string }>(
   }
 
   if (remoteApiUrl) {
+    console.log(`[Reranker] Using external API: ${remoteApiUrl}/v1/rerank (${candidates.length} candidates)`);
     return rerankViaSearchPipeline(query, candidates, topK, rerankTopN);
   }
 
+  console.log(`[Reranker] Using local ONNX model (${candidates.length} candidates)`);
   return rerankViaLocalModel(query, candidates, topK, rerankTopN);
 }

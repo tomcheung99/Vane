@@ -114,6 +114,7 @@ class ModelRegistry {
     // via the OpenAI-compatible /v1/embeddings endpoint.
     const retrievalApiUrl = getRetrievalApiUrl();
     if (retrievalApiUrl) {
+      console.log(`[Embedding] Using external retrieval API: ${retrievalApiUrl}/v1/embeddings`);
       return new RemoteEmbedding({
         apiUrl: retrievalApiUrl,
         apiKey: getRetrievalApiKey() || undefined,

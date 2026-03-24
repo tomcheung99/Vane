@@ -294,7 +294,13 @@ class Researcher {
     const queryText = `${input.followUp} ${input.classification.standaloneFollowUp}`;
     const queries = [input.followUp, input.classification.standaloneFollowUp].filter(Boolean);
 
-    const hybridRanked = await this.hybridRrf(expandedResults, queries, input.config.embedding);
+    let hybridRanked: typeof expandedResults;
+    try {
+      hybridRanked = await this.hybridRrf(expandedResults, queries, input.config.embedding);
+    } catch (err) {
+      console.warn('[WebSearch] Hybrid RRF (embedding) failed, falling back to BM25-only:', err);
+      hybridRanked = this.bm25Rerank(expandedResults, queryText);
+    }
 
     // Emit hybrid retrieval sub-step for UI visibility
     const hybridBlock = session.getBlock(researchBlockId);
@@ -464,6 +470,8 @@ class Researcher {
     embeddingModel: BaseEmbedding<any>,
   ): Promise<{ content: string; metadata: Record<string, any> }[]> {
     if (chunks.length <= 1) return chunks;
+
+    console.log(`[HybridRRF] Starting with ${chunks.length} chunks, ${queries.length} queries`);
 
     const RRF_K = 60;
     // Embedding and BM25 weights for RRF fusion. BM25 is weighted slightly
