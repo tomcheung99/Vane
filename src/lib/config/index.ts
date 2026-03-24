@@ -134,7 +134,7 @@ class ConfigManager {
         key: 'retrievalApiUrl',
         type: 'string',
         required: false,
-        description: 'Base URL of an external retrieval API (e.g. FlagEmbedding service). When set, /v1/rerank will be used instead of the local ONNX reranker.',
+        description: 'Base URL of an external retrieval API (e.g. FlagEmbedding service). When set, /v1/embeddings and /v1/rerank will be used instead of provider embeddings and the local ONNX reranker.',
         placeholder: 'http://localhost:8000',
         default: '',
         scope: 'server',
