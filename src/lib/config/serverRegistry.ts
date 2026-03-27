@@ -37,3 +37,9 @@ export const getColbertEnabled = (): boolean =>
 
 export const getRerankerModel = (): string =>
   configManager.getConfig('preferences.rerankerModel', 'jina-reranker-v2-base-multilingual');
+
+export const getEmbeddingModelProviderId = (): string =>
+  configManager.getConfig('preferences.embeddingModelProviderId', '');
+
+export const getEmbeddingModelKey = (): string =>
+  configManager.getConfig('preferences.embeddingModelKey', '');

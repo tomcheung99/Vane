@@ -26,7 +26,7 @@ type SelectUIConfigField = BaseUIConfigField & {
   options: SelectUIConfigFieldOptions[];
 };
 
-type PasswordUIConfigField = BaseUIConfigField & {
+export type PasswordUIConfigField = BaseUIConfigField & {
   type: 'password';
   placeholder?: string;
   default?: string;

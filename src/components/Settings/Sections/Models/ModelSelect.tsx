@@ -12,11 +12,14 @@ const ModelSelect = ({
   providers: ConfigModelProvider[];
   type: 'chat' | 'embedding';
 }) => {
-  const [selectedModel, setSelectedModel] = useState<string>(
-    type === 'chat'
-      ? `${localStorage.getItem('chatModelProviderId')}/${localStorage.getItem('chatModelKey')}`
-      : '',
-  );
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    if (type === 'chat') {
+      return `${localStorage.getItem('chatModelProviderId')}/${localStorage.getItem('chatModelKey')}`;
+    }
+    const pid = localStorage.getItem('embeddingModelProviderId');
+    const key = localStorage.getItem('embeddingModelKey');
+    return pid && key ? `${pid}/${key}` : '';
+  });
   const [loading, setLoading] = useState(false);
   const { setChatModelProvider } = useChat();
 
@@ -28,13 +31,27 @@ const ModelSelect = ({
       const providerId = newValue.split('/')[0];
       const modelKey = newValue.split('/').slice(1).join('/');
 
-      localStorage.setItem('chatModelProviderId', providerId);
-      localStorage.setItem('chatModelKey', modelKey);
-
-      setChatModelProvider({
-        providerId: providerId,
-        key: modelKey,
-      });
+      if (type === 'chat') {
+        localStorage.setItem('chatModelProviderId', providerId);
+        localStorage.setItem('chatModelKey', modelKey);
+        setChatModelProvider({ providerId, key: modelKey });
+      } else {
+        localStorage.setItem('embeddingModelProviderId', providerId);
+        localStorage.setItem('embeddingModelKey', modelKey);
+        // Persist to server config so loadDefaultEmbeddingModel() picks it up
+        await Promise.all([
+          fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: 'preferences.embeddingModelProviderId', value: providerId }),
+          }),
+          fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: 'preferences.embeddingModelKey', value: modelKey }),
+          }),
+        ]);
+      }
     } catch (error) {
       console.error('Error saving config:', error);
       toast.error('Failed to save configuration.');

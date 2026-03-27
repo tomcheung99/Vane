@@ -1,6 +1,6 @@
 import { ConfigModelProvider } from '../config/types';
 import BaseModelProvider, { createProviderInstance } from './base/provider';
-import { getConfiguredModelProviders } from '../config/serverRegistry';
+import { getConfiguredModelProviders, getEmbeddingModelProviderId, getEmbeddingModelKey } from '../config/serverRegistry';
 import { providers } from './providers';
 import { MinimalProvider, ModelList } from './types';
 import configManager from '../config';
@@ -108,6 +108,20 @@ class ModelRegistry {
 
   async loadDefaultEmbeddingModel() {
     await this.ensureInitialized();
+
+    // If the user has explicitly selected an embedding model, use it
+    const preferredProviderId = getEmbeddingModelProviderId();
+    const preferredModelKey = getEmbeddingModelKey();
+    if (preferredProviderId && preferredModelKey) {
+      const preferred = this.activeProviders.find((p) => p.id === preferredProviderId);
+      if (preferred) {
+        try {
+          return await preferred.provider.loadEmbeddingModel(preferredModelKey);
+        } catch (err) {
+          console.warn(`Preferred embedding model failed (${preferredProviderId}/${preferredModelKey}), falling back:`, err);
+        }
+      }
+    }
 
     // Prefer API-based providers over local transformers to avoid onnxruntime dependency
     const sortedProviders = [...this.activeProviders].sort((a, b) => {
