@@ -34,3 +34,6 @@ export const getRetrievalApiKey = (): string =>
 
 export const getColbertEnabled = (): boolean =>
   configManager.getConfig('preferences.colbertEnabled', false);
+
+export const getRerankerModel = (): string =>
+  configManager.getConfig('preferences.rerankerModel', 'jina-reranker-v2-base-multilingual');

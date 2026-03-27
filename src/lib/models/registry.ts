@@ -1,10 +1,9 @@
 import { ConfigModelProvider } from '../config/types';
 import BaseModelProvider, { createProviderInstance } from './base/provider';
-import { getConfiguredModelProviders, getRetrievalApiUrl, getRetrievalApiKey } from '../config/serverRegistry';
+import { getConfiguredModelProviders } from '../config/serverRegistry';
 import { providers } from './providers';
 import { MinimalProvider, ModelList } from './types';
 import configManager from '../config';
-import RemoteEmbedding from './remote/embedding';
 
 class ModelRegistry {
   private initPromise: Promise<void> | null = null;
@@ -109,17 +108,6 @@ class ModelRegistry {
 
   async loadDefaultEmbeddingModel() {
     await this.ensureInitialized();
-
-    // If an external retrieval API URL is configured, use it for embeddings
-    // via the OpenAI-compatible /v1/embeddings endpoint.
-    const retrievalApiUrl = getRetrievalApiUrl();
-    if (retrievalApiUrl) {
-      console.log(`[Embedding] Using external retrieval API: ${retrievalApiUrl}/v1/embeddings`);
-      return new RemoteEmbedding({
-        apiUrl: retrievalApiUrl,
-        apiKey: getRetrievalApiKey() || undefined,
-      });
-    }
 
     // Prefer API-based providers over local transformers to avoid onnxruntime dependency
     const sortedProviders = [...this.activeProviders].sort((a, b) => {

@@ -5,6 +5,7 @@ import BaseEmbedding from '../../base/embedding';
 import BaseModelProvider from '../../base/provider';
 import BaseLLM from '../../base/llm';
 import VercelAILLM from './vercelaiLLM';
+import VercelAIEmbedding from './vercelaiEmbedding';
 
 interface VercelAIConfig {
   apiKey: string;
@@ -21,6 +22,25 @@ const deprecatedChatModelMappings: Record<string, string> = {
   'google/gemini-2.5-flash-preview':
     'google/gemini-3.1-flash-lite-preview',
 };
+
+const defaultEmbeddingModels: Model[] = [
+  {
+    name: 'Alibaba: Qwen3 Embedding 4B',
+    key: 'alibaba/qwen3-embedding-4b',
+  },
+  {
+    name: 'OpenAI: text-embedding-3-small',
+    key: 'openai/text-embedding-3-small',
+  },
+  {
+    name: 'OpenAI: text-embedding-3-large',
+    key: 'openai/text-embedding-3-large',
+  },
+  {
+    name: 'Google: text-embedding-004',
+    key: 'google/text-embedding-004',
+  },
+];
 
 const defaultChatModels: Model[] = [
   {
@@ -172,7 +192,7 @@ class VercelAIProvider extends BaseModelProvider<VercelAIConfig> {
       const gatewayModels = await this.fetchGatewayModels();
 
       return {
-        embedding: [],
+        embedding: defaultEmbeddingModels,
         chat: mergeModels(gatewayModels, defaultChatModels),
       };
     } catch (error) {
@@ -180,7 +200,7 @@ class VercelAIProvider extends BaseModelProvider<VercelAIConfig> {
     }
 
     return {
-      embedding: [],
+      embedding: defaultEmbeddingModels,
       chat: defaultChatModels,
     };
   }
@@ -218,9 +238,20 @@ class VercelAIProvider extends BaseModelProvider<VercelAIConfig> {
   }
 
   async loadEmbeddingModel(key: string): Promise<BaseEmbedding<any>> {
-    throw new Error(
-      'Vercel AI Gateway Provider does not support embedding models.',
-    );
+    const modelList = await this.getModelList();
+    const exists = modelList.embedding.find((m) => m.key === key);
+
+    if (!exists) {
+      throw new Error(
+        'Error Loading Vercel AI Gateway Embedding Model. Invalid Model Selected',
+      );
+    }
+
+    return new VercelAIEmbedding({
+      apiKey: this.config.apiKey,
+      model: key,
+      baseURL: this.config.baseURL,
+    });
   }
 
   static parseAndValidate(raw: any): VercelAIConfig {

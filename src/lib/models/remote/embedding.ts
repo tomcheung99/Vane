@@ -22,7 +22,8 @@ class RemoteEmbedding extends BaseEmbedding<RemoteEmbeddingConfig> {
   }
 
   private async requestEmbeddings(texts: string[]): Promise<number[][]> {
-    const response = await fetch(`${this.config.apiUrl}/v1/embeddings`, {
+    const apiUrl = this.config.apiUrl.replace(/\/+$/, '');
+    const response = await fetch(`${apiUrl}/v1/embeddings`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ input: texts }),

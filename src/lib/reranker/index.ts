@@ -1,7 +1,6 @@
-import { getRerankerEnabled, getRerankerTopN, getRetrievalApiUrl, getRetrievalApiKey, getColbertEnabled } from '../config/serverRegistry';
+import { getRerankerEnabled, getRerankerTopN, getRetrievalApiUrl, getRetrievalApiKey, getRerankerModel } from '../config/serverRegistry';
 
 export const RERANKER_MODEL_ID = 'onnx-community/bge-reranker-v2-m3-ONNX';
-const REMOTE_MODEL_ID = 'BAAI/bge-reranker-v2-m3';
 const MODEL_ID = RERANKER_MODEL_ID;
 
 let rerankerPromise: Promise<any> | null = null;
@@ -52,46 +51,44 @@ async function rerankViaSearchPipeline<T extends { content: string }>(
   topK: number,
   rerankTopN: number,
 ): Promise<{ results: T[]; metadata: RerankExecutionMetadata }> {
-  const apiUrl = getRetrievalApiUrl();
-  const useColbert = getColbertEnabled();
+  const apiUrl = getRetrievalApiUrl()?.replace(/\/+$/, '');
+  const model = getRerankerModel();
 
   const toRerank = candidates.slice(0, rerankTopN);
-  const documents = toRerank.map((c, i) => ({
-    id: String(i),
-    content: c.content,
-  }));
+  const documents = toRerank.map((c) => c.content);
 
   const response = await fetch(`${apiUrl}/v1/rerank`, {
     method: 'POST',
     headers: getRemoteHeaders(),
     body: JSON.stringify({
+      model,
       query,
+      top_n: topK,
       documents,
-      rerank_top_k: topK,
-      two_stage: useColbert,
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`Remote reranker API error: ${response.status} ${response.statusText}`);
+    const errBody = await response.text().catch(() => '');
+    throw new Error(`Remote reranker API error: ${response.status} ${response.statusText} ${errBody}`);
   }
 
   const data = await response.json() as {
-    results: { doc_id: number; score: number }[];
+    results: { index: number; relevance_score: number }[];
   };
 
   const scored = data.results
-    .filter((r) => r.doc_id < toRerank.length)
-    .sort((a, b) => b.score - a.score)
+    .filter((r) => r.index < toRerank.length)
+    .sort((a, b) => b.relevance_score - a.relevance_score)
     .slice(0, topK)
-    .map((r) => toRerank[r.doc_id]);
+    .map((r) => toRerank[r.index]);
 
   return {
     results: scored,
     metadata: {
       enabled: true,
       applied: true,
-      modelId: REMOTE_MODEL_ID,
+      modelId: model,
       topN: rerankTopN,
       inputCount: toRerank.length,
       outputCount: scored.length,
@@ -158,7 +155,7 @@ export async function rerankWithMetadata<T extends { content: string }>(
       metadata: {
         enabled: getRerankerEnabled(),
         applied: false,
-        modelId: remoteApiUrl ? REMOTE_MODEL_ID : MODEL_ID,
+        modelId: remoteApiUrl ? getRerankerModel() : MODEL_ID,
         topN: rerankTopN,
         inputCount: 0,
         outputCount: 0,
@@ -172,7 +169,7 @@ export async function rerankWithMetadata<T extends { content: string }>(
       metadata: {
         enabled: false,
         applied: false,
-        modelId: remoteApiUrl ? REMOTE_MODEL_ID : MODEL_ID,
+        modelId: remoteApiUrl ? getRerankerModel() : MODEL_ID,
         topN: rerankTopN,
         inputCount: Math.min(candidates.length, rerankTopN),
         outputCount: Math.min(candidates.length, topK),
@@ -181,10 +178,10 @@ export async function rerankWithMetadata<T extends { content: string }>(
   }
 
   if (remoteApiUrl) {
-    console.log(`[Reranker] Using external API: ${remoteApiUrl}/v1/rerank (${candidates.length} candidates)`);
+    console.log(`[Reranker] Using external API: ${remoteApiUrl}/v1/rerank (${Math.min(candidates.length, rerankTopN)} candidates)`);
     return rerankViaSearchPipeline(query, candidates, topK, rerankTopN);
   }
 
-  console.log(`[Reranker] Using local ONNX model (${candidates.length} candidates)`);
+  console.log(`[Reranker] Using local ONNX model (${Math.min(candidates.length, rerankTopN)} candidates)`);
   return rerankViaLocalModel(query, candidates, topK, rerankTopN);
 }
