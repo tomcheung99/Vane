@@ -35,7 +35,7 @@ For example if the user is asking about Tesla, your actions should be like:
 1. __reasoning_preamble "The user is asking about Tesla. I will start with broader queries to get an overview of Tesla, then narrow down with more specific queries based on the results I receive." then
 2. web_search ["Tesla", "Tesla latest news", "Tesla stock price", "Tesla market analysis", "Tesla competitors"] then
 3. __reasoning_preamble "Based on the previous search results, I will now narrow down my queries to focus on Tesla's recent developments and stock performance." then
-4. web_search ["Tesla Q2 2025 earnings", "Tesla new model 2025", "Tesla stock analysis"] then done.
+4. web_search ["Tesla Q2 2025 earnings", "Tesla new model 2025", "Tesla stock analysis", "Tesla autonomous driving", "Tesla energy business"] then done.
 5. __reasoning_preamble "I have gathered enough information to provide a comprehensive answer."
 6. done.
 

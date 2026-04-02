@@ -9,7 +9,7 @@ const schema = z.object({
 
 const socialSearchDescription = `
 Use this tool to perform social media searches for relevant posts, discussions, and trends related to the user's query. Provide a list of concise search queries that will help gather comprehensive social media information on the topic at hand.
-You can provide up to 5 queries at a time. Make sure the queries are specific and relevant to the user's needs.
+Make sure the queries are specific and relevant to the user's needs.
 
 For example, if the user is interested in public opinion on electric vehicles, your queries could be:
 1. "Electric vehicles public opinion 2024"

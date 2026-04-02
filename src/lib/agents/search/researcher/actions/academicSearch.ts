@@ -9,7 +9,7 @@ const schema = z.object({
 
 const academicSearchDescription = `
 Use this tool to perform academic searches for scholarly articles, papers, and research studies relevant to the user's query. Provide a list of concise search queries that will help gather comprehensive academic information on the topic at hand.
-You can provide up to 5 queries at a time. Make sure the queries are specific and relevant to the user's needs.
+Make sure the queries are specific and relevant to the user's needs.
 
 For example, if the user is interested in recent advancements in renewable energy, your queries could be:
 1. "Recent advancements in renewable energy 2024"
