@@ -28,12 +28,39 @@ For example:
 Do NOT call this tool to scrape arbitrary URLs from search results unless the user explicitly asked for it.
 `;
 
+const deepScrapeDescription = `
+Use this tool to scrape and extract content from the provided URLs. This is useful when you need to extract full page content from specific web pages. You can provide up to 3 URLs at a time.
+
+You MUST call this tool when:
+1. The user explicitly asks you to read, summarize, or extract from a URL.
+2. The user's message contains any URL(s) — always scrape it first before doing any other research.
+3. **You find a highly relevant search result** where the title strongly matches the user's query but the snippet content is insufficient. In this case, scrape the URL to get the full page content for deeper analysis.
+
+This is DEEP RESEARCH mode — you should proactively scrape authoritative sources discovered through web_search to get full context rather than relying on short snippets. Key scenarios for proactive scraping:
+- Technical documentation pages that likely contain detailed specifications
+- Academic papers or research articles where the snippet only shows the abstract
+- Long-form analysis or expert opinions where the snippet is just the introduction
+- Official announcements or blog posts with important details beyond the preview
+
+IMPORTANT: Scraping a URL is typically just the FIRST step. After scraping, continue researching with web_search to find additional context, cross-reference information, and build comprehensive coverage.
+
+For example:
+- Search result shows "Comprehensive Guide to X" but snippet is only 2 sentences → scrape it for the full guide
+- Search result links to official documentation → scrape it for authoritative technical details
+- Search result shows a research paper abstract → scrape it for methodology and findings
+`;
+
 const scrapeURLAction: ResearchAction<typeof schema> = {
   name: 'scrape_url',
   schema: schema,
   getToolDescription: () =>
     'Use this tool to scrape and extract content from the provided URLs. This is useful when you need to extract information from specific web pages. You can provide up to 3 URLs at a time. You MUST call this tool when the user\'s message contains any URL(s).',
-  getDescription: () => actionDescription,
+  getDescription: (config) => {
+    if (config.mode === 'deep' || config.mode === 'quality') {
+      return deepScrapeDescription;
+    }
+    return actionDescription;
+  },
   enabled: (_) => true,
   execute: async (params, additionalConfig) => {
     params.urls = params.urls.slice(0, 3);
