@@ -2,6 +2,7 @@ import z from 'zod';
 import { ResearchAction } from '../../types';
 import { Chunk, SearchResultsResearchBlock } from '@/lib/types';
 import { searchSearxng } from '@/lib/searxng';
+import { getQueryLimitForMode } from '../../queryLimits';
 
 const schema = z.object({
   queries: z.array(z.string()).describe('List of social search queries'),
@@ -9,7 +10,7 @@ const schema = z.object({
 
 const socialSearchDescription = `
 Use this tool to perform social media searches for relevant posts, discussions, and trends related to the user's query. Provide a list of concise search queries that will help gather comprehensive social media information on the topic at hand.
-You can provide up to 3 queries at a time. Make sure the queries are specific and relevant to the user's needs.
+Make sure the queries are specific and relevant to the user's needs.
 
 For example, if the user is interested in public opinion on electric vehicles, your queries could be:
 1. "Electric vehicles public opinion 2024"
@@ -23,14 +24,17 @@ const socialSearchAction: ResearchAction<typeof schema> = {
   name: 'social_search',
   schema: schema,
   getDescription: () => socialSearchDescription,
-  getToolDescription: () =>
-    "Use this tool to perform social media searches for relevant posts, discussions, and trends related to the user's query. Provide a list of concise search queries that will help gather comprehensive social media information on the topic at hand.",
+  getToolDescription: (config) => {
+    const limit = getQueryLimitForMode(config.mode);
+    return `Use this tool to perform social media searches for relevant posts, discussions, and trends related to the user's query. You can provide up to ${limit} queries at a time. Provide a list of concise search queries that will help gather comprehensive social media information on the topic at hand.`;
+  },
   enabled: (config) =>
     config.sources.includes('discussions') &&
     config.classification.classification.skipSearch === false &&
     config.classification.classification.discussionSearch === true,
   execute: async (input, additionalConfig) => {
-    input.queries = input.queries.slice(0, 3);
+    const queryLimit = getQueryLimitForMode(additionalConfig.mode);
+    input.queries = input.queries.slice(0, queryLimit);
 
     const researchBlock = additionalConfig.session.getBlock(
       additionalConfig.researchBlockId,

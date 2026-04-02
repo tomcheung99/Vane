@@ -68,6 +68,7 @@ export type AdditionalConfig = {
   llm: BaseLLM<any>;
   embedding: BaseEmbedding<any>;
   session: SessionManager;
+  mode: SearchAgentConfig['mode'];
 };
 
 export type ResearcherInput = {
