@@ -35,7 +35,7 @@ Use this tool to scrape and extract content from the provided URLs. This is usef
 You MUST call this tool when:
 1. The user explicitly asks you to read, summarize, or extract from a URL.
 2. The user's message contains any URL(s) — always scrape it first before doing any other research.
-3. **You see a highly relevant search result** whose title strongly matches the research topic but the snippet is too short or incomplete. In DEEP RESEARCH mode, scraping promising URLs from search results is encouraged to build comprehensive coverage.
+3. You see a highly relevant search result whose title strongly matches the research topic but the snippet is too short or incomplete. In DEEP RESEARCH mode, scraping promising URLs from search results is encouraged to build comprehensive coverage.
 
 DEEP RESEARCH SCRAPING STRATEGY:
 - After each web_search round, review the result titles. If a result looks like a detailed technical document, comprehensive guide, authoritative analysis, or primary source, scrape it immediately.
