@@ -68,7 +68,27 @@ export type AdditionalConfig = {
   llm: BaseLLM<any>;
   embedding: BaseEmbedding<any>;
   session: SessionManager;
+  mode: SearchAgentConfig['mode'];
 };
+
+/**
+ * Returns the maximum number of queries allowed per search call
+ * based on the current optimization mode.
+ */
+export function getQueryLimitForMode(mode: SearchAgentConfig['mode']): number {
+  switch (mode) {
+    case 'speed':
+      return 5;
+    case 'balanced':
+      return 5;
+    case 'quality':
+      return 7;
+    case 'deep':
+      return 10;
+    default:
+      return 5;
+  }
+}
 
 export type ResearcherInput = {
   chatHistory: ChatTurnMessage[];
