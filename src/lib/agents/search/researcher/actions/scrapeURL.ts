@@ -4,6 +4,7 @@ import { Chunk, ReadingResearchBlock } from '@/lib/types';
 import TurnDown from 'turndown';
 import path from 'path';
 import { splitTextFineGrained } from '@/lib/utils/splitText';
+import { getQueryLimitForMode } from '../../queryLimits';
 
 const turndownService = new TurnDown();
 
@@ -11,8 +12,8 @@ const schema = z.object({
   urls: z.array(z.string()).describe('A list of URLs to scrape content from.'),
 });
 
-const actionDescription = `
-Use this tool to scrape and extract content from the provided URLs. This is useful when you need to extract information from specific web pages. You can provide up to 3 URLs at a time.
+const defaultActionDescription = `
+Use this tool to scrape and extract content from the provided URLs. This is useful when you need to extract information from specific web pages.
 
 You MUST call this tool when:
 1. The user explicitly asks you to read, summarize, or extract from a URL (e.g., "summarize https://example.com/article")
@@ -28,15 +29,46 @@ For example:
 Do NOT call this tool to scrape arbitrary URLs from search results unless the user explicitly asked for it.
 `;
 
+const deepScrapeDescription = `
+Use this tool to scrape and extract content from the provided URLs. This is useful when you need to extract full page content from specific web pages.
+
+You MUST call this tool when:
+1. The user explicitly asks you to read, summarize, or extract from a URL.
+2. The user's message contains any URL(s) — always scrape it first before doing any other research.
+3. You see a highly relevant search result whose title strongly matches the research topic but the snippet is too short or incomplete. In DEEP RESEARCH mode, scraping promising URLs from search results is encouraged to build comprehensive coverage.
+
+DEEP RESEARCH SCRAPING STRATEGY:
+- After each web_search round, review the result titles. If a result looks like a detailed technical document, comprehensive guide, authoritative analysis, or primary source, scrape it immediately.
+- Prioritize scraping: official documentation, research papers, detailed blog posts, and in-depth analyses.
+- Do NOT scrape every URL — only the most promising ones that are likely to contain substantial information beyond the snippet.
+- After scraping, continue researching with web_search to cross-reference and find additional context.
+
+For example:
+- Search result: "Comprehensive Guide to Quantum Computing 2025" with a 2-line snippet → scrape it for full content
+- Search result: "Quick FAQ about quantum bits" → skip scraping, the snippet is probably sufficient
+`;
+
 const scrapeURLAction: ResearchAction<typeof schema> = {
   name: 'scrape_url',
   schema: schema,
-  getToolDescription: () =>
-    'Use this tool to scrape and extract content from the provided URLs. This is useful when you need to extract information from specific web pages. You can provide up to 3 URLs at a time. You MUST call this tool when the user\'s message contains any URL(s).',
-  getDescription: () => actionDescription,
+  getToolDescription: (config) => {
+    const limit = getQueryLimitForMode(config.mode);
+    const base = `Use this tool to scrape and extract content from the provided URLs. This is useful when you need to extract information from specific web pages. You can provide up to ${limit} URLs at a time.`;
+    if (config.mode === 'deep' || config.mode === 'quality') {
+      return `${base} You MUST call this tool when the user's message contains any URL(s), and you SHOULD also use it to scrape highly relevant URLs from search results when snippets are insufficient.`;
+    }
+    return `${base} You MUST call this tool when the user's message contains any URL(s).`;
+  },
+  getDescription: (config) => {
+    if (config.mode === 'deep') {
+      return deepScrapeDescription;
+    }
+    return defaultActionDescription;
+  },
   enabled: (_) => true,
   execute: async (params, additionalConfig) => {
-    params.urls = params.urls.slice(0, 3);
+    const urlLimit = getQueryLimitForMode(additionalConfig.mode);
+    params.urls = params.urls.slice(0, urlLimit);
 
     let readingBlockId = crypto.randomUUID();
     let readingEmitted = false;

@@ -18,6 +18,7 @@ import {
 } from '@/lib/utils/bm25';
 import { splitTextFineGrained } from '@/lib/utils/splitText';
 import BaseEmbedding from '@/lib/models/base/embedding';
+import { getContextChunkLimitForMode } from '../queryLimits';
 
 class Researcher {
   async research(
@@ -231,16 +232,29 @@ class Researcher {
         session: session,
         researchBlockId: researchBlockId,
         fileIds: input.config.fileIds,
+        mode: input.config.mode,
       });
 
       actionOutput.push(...actionResults);
 
+      const contextChunkLimit = getContextChunkLimitForMode(input.config.mode);
+
       actionResults.forEach((action, i) => {
+        let serialized: ActionOutput = action;
+
+        // Trim search result chunks to prevent context window bloat
+        if (action.type === 'search_results' && action.results.length > contextChunkLimit) {
+          serialized = {
+            ...action,
+            results: action.results.slice(0, contextChunkLimit),
+          };
+        }
+
         agentMessageHistory.push({
           role: 'tool',
           id: finalToolCalls[i].id,
           name: finalToolCalls[i].name,
-          content: JSON.stringify(action),
+          content: JSON.stringify(serialized),
         });
       });
     }

@@ -1,12 +1,13 @@
 import z from 'zod';
 import { ResearchAction } from '../../types';
 import UploadStore from '@/lib/uploads/store';
+import { getQueryLimitForMode } from '../../queryLimits';
 
 const schema = z.object({
   queries: z
     .array(z.string())
     .describe(
-      'A list of queries to search in user uploaded files. Can be a maximum of 3 queries.',
+      'A list of queries to search in user uploaded files.',
     ),
 });
 
@@ -17,17 +18,20 @@ const uploadsSearchAction: ResearchAction<typeof schema> = {
       config.fileIds.length > 0) ||
     config.fileIds.length > 0,
   schema,
-  getToolDescription: () =>
-    `Use this tool to perform searches over the user's uploaded files. This is useful when you need to gather information from the user's documents to answer their questions. You can provide up to 3 queries at a time. You will have to use this every single time if this is present and relevant.`,
+  getToolDescription: (config) => {
+    const limit = getQueryLimitForMode(config.mode);
+    return `Use this tool to perform searches over the user's uploaded files. This is useful when you need to gather information from the user's documents to answer their questions. You can provide up to ${limit} queries at a time. You will have to use this every single time if this is present and relevant.`;
+  },
   getDescription: () => `
-  Use this tool to perform searches over the user's uploaded files. This is useful when you need to gather information from the user's documents to answer their questions. You can provide up to 3 queries at a time. You will have to use this every single time if this is present and relevant.
+  Use this tool to perform searches over the user's uploaded files. This is useful when you need to gather information from the user's documents to answer their questions. You will have to use this every single time if this is present and relevant.
   Always ensure that the queries you use are directly relevant to the user's request and pertain to the content of their uploaded files.
 
   For example, if the user says "Please find information about X in my uploaded documents", you can call this tool with a query related to X to retrieve the relevant information from their files.
   Never use this tool to search the web or for information that is not contained within the user's uploaded files.
   `,
   execute: async (input, additionalConfig) => {
-    input.queries = input.queries.slice(0, 3);
+    const queryLimit = getQueryLimitForMode(additionalConfig.mode);
+    input.queries = input.queries.slice(0, queryLimit);
 
     const researchBlock = additionalConfig.session.getBlock(
       additionalConfig.researchBlockId,
