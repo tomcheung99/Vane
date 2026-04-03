@@ -112,14 +112,19 @@ class ModelRegistry {
     // If the user has explicitly selected an embedding model, use it
     const preferredProviderId = getEmbeddingModelProviderId();
     const preferredModelKey = getEmbeddingModelKey();
+    console.log(`[Embedding] Preferred config: providerId="${preferredProviderId}", modelKey="${preferredModelKey}"`);
+    console.log(`[Embedding] Active providers: ${this.activeProviders.map((p) => `${p.id}(${p.type}/${p.name})`).join(', ')}`);
     if (preferredProviderId && preferredModelKey) {
       const preferred = this.activeProviders.find((p) => p.id === preferredProviderId);
       if (preferred) {
         try {
+          console.log(`[Embedding] Loading preferred: ${preferredProviderId}/${preferredModelKey}`);
           return await preferred.provider.loadEmbeddingModel(preferredModelKey);
         } catch (err) {
           console.warn(`Preferred embedding model failed (${preferredProviderId}/${preferredModelKey}), falling back:`, err);
         }
+      } else {
+        console.warn(`[Embedding] Preferred provider "${preferredProviderId}" not found in active providers`);
       }
     }
 

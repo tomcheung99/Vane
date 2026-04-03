@@ -16,7 +16,7 @@ export async function rotateVpnIp(): Promise<void> {
     body: JSON.stringify({ status: 'stopped' }),
   });
 
-  await sleep(2000);
+  await sleep(3000);
 
   await fetch(`${gluetunURL}/v1/openvpn/status`, {
     method: 'PUT',
@@ -24,7 +24,7 @@ export async function rotateVpnIp(): Promise<void> {
     body: JSON.stringify({ status: 'running' }),
   });
 
-  await sleep(8000);
+  await sleep(5000);
 
   console.log('[Gluetun] VPN IP rotated');
 }
