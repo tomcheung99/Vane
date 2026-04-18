@@ -87,7 +87,7 @@ const Page = () => {
                 Discover
               </h1>
             </div>
-            <div className="flex flex-row items-center space-x-2 overflow-x-auto">
+            <div className="flex flex-row items-center space-x-2 overflow-x-auto scrollbar-hide -mx-2 px-2">
               {topics.map((t, i) => (
                 <div
                   key={i}
@@ -107,7 +107,7 @@ const Page = () => {
         </div>
 
         {loading ? (
-          <div className="flex flex-row items-center justify-center min-h-screen">
+          <div className="flex flex-row items-center justify-center min-h-[100dvh]">
             <svg
               aria-hidden="true"
               className="w-8 h-8 text-light-200 fill-light-secondary dark:text-[#202020] animate-spin dark:fill-[#ffffff3b]"

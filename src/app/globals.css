@@ -88,6 +88,32 @@
     line-clamp: 2;
     overflow: hidden;
   }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pb-safe-plus-4 {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  }
+
+  .bottom-safe {
+    bottom: env(safe-area-inset-bottom);
+  }
+}
+
+html,
+body {
+  overflow-x: hidden;
 }
 
 @media screen and (-webkit-min-device-pixel-ratio: 0) {

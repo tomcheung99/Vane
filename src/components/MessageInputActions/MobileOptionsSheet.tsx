@@ -166,7 +166,7 @@ const MobileOptionsSheet = ({ isOpen, onClose }: MobileOptionsSheetProps) => {
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                className="w-full max-h-[85vh] bg-light-primary dark:bg-dark-primary rounded-t-2xl overflow-hidden flex flex-col"
+                className="w-full max-h-[85dvh] bg-light-primary dark:bg-dark-primary rounded-t-2xl overflow-hidden flex flex-col"
               >
               {/* Drag handle */}
               <div className="flex justify-center pt-3 pb-1">

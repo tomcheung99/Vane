@@ -117,9 +117,9 @@ const SettingsDialogue = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.1 }}
-        className="fixed inset-0 flex w-screen items-center justify-center p-4 bg-black/30 backdrop-blur-sm h-screen"
+        className="fixed inset-0 flex w-screen items-center justify-center p-4 bg-black/30 backdrop-blur-sm h-[100dvh]"
       >
-        <DialogPanel className="space-y-4 border border-light-200 dark:border-dark-200 bg-light-primary dark:bg-dark-primary backdrop-blur-lg rounded-xl h-[calc(100vh-2%)] w-[calc(100vw-2%)] md:h-[calc(100vh-7%)] md:w-[calc(100vw-7%)] lg:h-[calc(100vh-20%)] lg:w-[calc(100vw-30%)] overflow-hidden flex flex-col">
+        <DialogPanel className="space-y-4 border border-light-200 dark:border-dark-200 bg-light-primary dark:bg-dark-primary backdrop-blur-lg rounded-xl h-[calc(100dvh-2%)] w-[calc(100vw-2%)] md:h-[calc(100dvh-7%)] md:w-[calc(100vw-7%)] lg:h-[calc(100dvh-20%)] lg:w-[calc(100vw-30%)] overflow-hidden flex flex-col">
           {isLoading ? (
             <div className="flex items-center justify-center h-full w-full">
               <Loader />

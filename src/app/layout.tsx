@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Montserrat } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,16 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: 'Vane - Direct your curiosity',
   description: 'Vane is an AI powered answering engine.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0d1117' },
+  ],
 };
 
 export default async function RootLayout({

@@ -30,7 +30,7 @@ const SetupWizard = ({
   }, []);
 
   return (
-    <div className="bg-light-primary dark:bg-dark-primary h-screen w-screen fixed inset-0 overflow-hidden">
+    <div className="bg-light-primary dark:bg-dark-primary h-[100dvh] w-screen fixed inset-0 overflow-hidden">
       <AnimatePresence>
         {showWelcome && (
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden">

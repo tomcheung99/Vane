@@ -42,7 +42,7 @@ const ChatWindow = () => {
         <div className="absolute w-full flex flex-row items-center justify-end mr-5 mt-5">
           <SettingsButtonMobile />
         </div>
-        <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center justify-center min-h-[100dvh]">
           <p className="dark:text-white/70 text-black/70 text-sm">
             Failed to connect to the server. Please try again later.
           </p>
@@ -67,7 +67,7 @@ const ChatWindow = () => {
       </div>
     )
   ) : (
-    <div className="flex items-center justify-center min-h-screen w-full">
+    <div className="flex items-center justify-center min-h-[100dvh] w-full">
       <Loader />
     </div>
   );

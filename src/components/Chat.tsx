@@ -60,7 +60,7 @@ const Chat = () => {
   }, [messages]);
 
   return (
-    <div className="flex flex-col space-y-6 pt-8 pb-44 lg:pb-28 sm:mx-4 md:mx-8">
+    <div className="flex flex-col space-y-6 pt-8 pb-[calc(env(safe-area-inset-bottom)+11rem)] lg:pb-28 sm:mx-4 md:mx-8">
       {sections.map((section, i) => {
         const isLast = i === sections.length - 1;
 
@@ -93,7 +93,7 @@ const Chat = () => {
       <div ref={messageEnd} className="h-0" />
       {dividerWidth > 0 && (
         <div
-          className="fixed z-40 bottom-24 lg:bottom-6"
+          className="fixed z-40 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] lg:bottom-6"
           style={{ width: dividerWidth }}
         >
           <div
