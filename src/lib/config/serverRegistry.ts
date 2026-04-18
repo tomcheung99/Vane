@@ -34,3 +34,12 @@ export const getRetrievalApiKey = (): string =>
 
 export const getColbertEnabled = (): boolean =>
   configManager.getConfig('preferences.colbertEnabled', false);
+
+export const getEmbeddingModelProviderId = (): string =>
+  configManager.getConfig('preferences.embeddingModelProviderId', '');
+
+export const getEmbeddingModelKey = (): string =>
+  configManager.getConfig('preferences.embeddingModelKey', '');
+
+export const getRerankerModel = (): string =>
+  configManager.getConfig('preferences.rerankerModel', 'bge-reranker-v2-m3');
